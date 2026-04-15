@@ -1,2 +1,150 @@
-# Animation-Engine
-Animation for Game Engine
+# Animation Engine
+
+A professional animation tool for creating **3-D models and animated assets**
+compatible with **Game Engine for Teaching**.  Inspired by the animation
+pipeline of *Final Fantasy XV*, the engine delivers AAA-quality animation
+features in a clean, well-commented, Python codebase.
+
+---
+
+## Features
+
+| Feature | Details |
+|---------|---------|
+| **Skeletal Animation** | Hierarchical bone rigs (50+ bones), local-space keyframes, world-space skin matrices |
+| **Cubic-Spline Interpolation** | STEP / LINEAR / CUBICSPLINE modes matching glTF 2.0 — the same curves used in FF15 |
+| **Animation Blending** | State-machine driven BlendTree with smooth cubic ease-in/out crossfades |
+| **Inverse Kinematics** | FABRIK solver for foot-placement, hand-IK, and look-at constraints |
+| **Morph Targets** | Blend-shape / morph-target animation for facial expressions and lip-sync |
+| **PBR Materials** | Full metalness/roughness workflow — albedo, normal, occlusion, emissive maps |
+| **Export: `.anim`** | Native JSON format for Game Engine for Teaching (single-file: model + clips + morph tracks) |
+| **Export: glTF 2.0** | Industry-standard interchange for Unreal, Unity, Godot, Blender, and more |
+| **Import** | Re-import `.anim` and `.gltf` / `.glb` files back into the engine |
+| **Timeline Editor** | Tkinter-based GUI with timeline, bone hierarchy, and properties panel |
+
+---
+
+## Package Layout
+
+```
+animation_engine/
+├── math_utils/      Vector2/3/4, Quaternion, Matrix4x4, Transform
+├── model/           Vertex, Mesh, MorphTarget, PBRMaterial, Bone, Skeleton, Model
+├── animation/       Keyframe, Channel, Clip, BlendTree, IKSolver, MorphTrack
+├── io/              AnimExporter/Importer (.anim), GltfExporter/Importer (.gltf)
+├── runtime/         Animator (per-frame update loop), cpu_skin_mesh
+└── editor/          Tkinter timeline + bone editor (AnimationEditor)
+tests/               pytest test suite (95 tests)
+```
+
+---
+
+## Quick Start
+
+### Install
+
+```bash
+pip install -r requirements.txt
+```
+
+### Create and export a model
+
+```python
+from animation_engine.model import Model, Mesh, Vertex, PBRMaterial, Skeleton
+from animation_engine.math_utils import Vector2, Vector3, Transform
+from animation_engine.animation import AnimationClip
+from animation_engine.animation.channel import ChannelTarget
+from animation_engine.io import AnimExporter
+
+# 1. Build a model
+model = Model("character")
+
+# 2. Add a PBR material
+skin = PBRMaterial("skin")
+skin.albedo_color = [0.8, 0.65, 0.5, 1.0]
+skin.roughness = 0.7
+model.add_material(skin)
+
+# 3. Add a mesh (geometry omitted for brevity)
+mesh = Mesh("body", vertices=[...], indices=[...], material_name="skin")
+model.add_mesh(mesh)
+
+# 4. Build a skeleton
+skel = Skeleton("rig")
+root  = skel.add_bone("root")
+spine = skel.add_bone("spine_01", parent_index=root,
+                      local_transform=Transform(position=Vector3(0, 0.9, 0)))
+skel.compute_bind_pose()
+model.skeleton = skel
+
+# 5. Author an animation clip
+clip = AnimationClip("idle", fps=30.0, loop=True)
+clip.add_keyframe("spine_01", ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+clip.add_keyframe("spine_01", ChannelTarget.ROTATION, 1.5, [0, 0.05, 0, 0.9987])
+clip.add_keyframe("spine_01", ChannelTarget.ROTATION, 3.0, [0, 0, 0, 1])
+
+# 6. Export to .anim (Game Engine for Teaching) and glTF 2.0
+AnimExporter().export(model, [clip], "character.anim")
+
+from animation_engine.io import GltfExporter
+GltfExporter().export(model, [clip], "character.gltf")
+```
+
+### Run the editor
+
+```bash
+python -m animation_engine.editor.main
+```
+
+### Run the tests
+
+```bash
+pytest tests/ -v
+```
+
+---
+
+## Architecture
+
+### Math layer (`math_utils`)
+Column-vector convention (OpenGL / glTF).  All transforms use `M @ v` where `v`
+is a 4-D column vector.  `Quaternion.slerp` produces smooth constant-angular-
+velocity blending — the same algorithm used in FF15.
+
+### Animation layer (`animation`)
+- **Keyframe** — stores value + in/out tangents for CUBICSPLINE interpolation.
+- **AnimationChannel** — time-sorted keyframe list for one bone × one property.
+- **AnimationClip** — named collection of channels; evaluates a complete pose.
+- **BlendTree** — state-machine with smooth crossfades between clips.
+- **IKSolver** — FABRIK algorithm; modifies FK poses in-place with optional
+  pole-vector hinting.
+- **MorphTrack** — float-valued keyframes for morph-target weights.
+
+### IO layer (`io`)
+| Format | Read | Write |
+|--------|------|-------|
+| `.anim` (JSON) | ✅ `AnimImporter` | ✅ `AnimExporter` |
+| `.gltf` + `.bin` | ✅ `GltfImporter` | ✅ `GltfExporter` |
+
+### Runtime layer (`runtime`)
+`Animator.update(delta)` advances the blend tree, runs IK, computes skin
+matrices, and evaluates morph weights — all in one call from the game loop.
+`get_skin_matrices_flat()` returns a flat `float32` array ready for upload
+to a GPU uniform buffer via Game Engine for Teaching's rendering API.
+
+---
+
+## Compatibility with Game Engine for Teaching
+
+The `.anim` format is the primary native format.  Import it with:
+
+```python
+from animation_engine.io import AnimImporter
+model, clips, morph_tracks = AnimImporter().import_file("character.anim")
+```
+
+Pass `animator.get_skin_matrices_flat()` to your shader's bone-matrix UBO,
+and `animator.morph_weights` to blend-shape weight uniforms.
+
+glTF 2.0 export ensures compatibility with any renderer that supports the
+standard — every modern game engine and DCC tool does.
