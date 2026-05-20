@@ -6,6 +6,7 @@ Generates complete character animation library in batch.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -30,16 +31,19 @@ class AnimationPipeline:
         backend: str = "procedural",
         sample_rate: float = 30.0,
         seed: int | None = None,
+        profile_id: str = "ff10_ps2",
     ) -> None:
         from animation_engine.backend import BackendRegistry
 
         self.backend = BackendRegistry.get(backend, sample_rate=sample_rate, seed=seed)
         self.sample_rate = sample_rate
+        self.profile_id = profile_id
 
     def generate_all(
         self,
         output_dir: str | Path,
         skeleton: Any,
+        profile_id: str | None = None,
     ) -> dict[str, Any]:
         """Generate complete animation library.
 
@@ -56,31 +60,64 @@ class AnimationPipeline:
             Manifest of generated files.
         """
         from animation_engine.io import AnimExporter
+        from animation_engine.integration.style_profiles import get_style_profile
         from animation_engine.model import Model
 
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        motion_types = ["idle", "walk", "run", "attack"]
+        active_profile_id = profile_id or self.profile_id
+        profile = get_style_profile(active_profile_id)
+
         generated: dict[str, str] = {}
+        failed: dict[str, str] = {}
 
         exporter = AnimExporter()
 
         model = Model("generated_animation_model")
         model.skeleton = skeleton
 
-        for motion in motion_types:
-            clip = self.backend.generate_clip(
-                skeleton=skeleton,
-                motion_type=motion,
-                duration=3.0 if motion == "idle" else 1.5,
-            )
+        for clip_spec in profile.required_clips:
+            motion = clip_spec.motion_type
+            try:
+                clip = self.backend.generate_clip(
+                    skeleton=skeleton,
+                    motion_type=motion,
+                    duration=clip_spec.duration,
+                    cadence_scale=profile.cadence_scale,
+                    amplitude_scale=profile.amplitude_scale,
+                    profile_id=profile.profile_id,
+                )
+                output_path = output_dir / f"{motion}.anim"
+                exporter.export(
+                    model,
+                    [clip],
+                    metadata={
+                        "style_profile": profile.profile_id,
+                        "motion_type": motion,
+                        "duration": clip_spec.duration,
+                        "sample_rate": self.sample_rate,
+                    },
+                    path=str(output_path),
+                )
+                generated[motion] = str(output_path)
+            except Exception as exc:  # pragma: no cover - defensive catch
+                failed[motion] = str(exc)
 
-            output_path = output_dir / f"{motion}.anim"
-            exporter.export(model, [clip], path=str(output_path))
-            generated[motion] = str(output_path)
-
-        return {
+        manifest_path = output_dir / "pack_manifest.json"
+        manifest = {
+            "status": "failed" if failed else "ok",
+            "profile_id": profile.profile_id,
+            "profile_label": profile.label,
+            "required_clips": [clip.motion_type for clip in profile.required_clips],
+            "expected": len(profile.required_clips),
             "generated": len(generated),
             "files": generated,
+            "failed": failed,
+            "sample_rate": self.sample_rate,
+            "manifest_path": str(manifest_path),
         }
+        with open(manifest_path, "w", encoding="utf-8") as fh:
+            json.dump(manifest, fh, indent=2)
+
+        return manifest
