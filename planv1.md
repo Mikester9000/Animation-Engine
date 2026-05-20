@@ -120,7 +120,7 @@ This file is the single ordered master plan from current repository state to a r
 
 ### Task 10
 - **Task Name:** Add CLI command for pack validation gate
-- **Narrative Logic:** Export to `Mikester9000/GameRewritten` should be blocked when quality gates fail.
+- **Narrative Logic:** Export to `Mikester9000/GameRewritten` should be blocked if quality gates fail.
 - **Code Structure Need:** Add subcommand to run clip, loop, skeleton, and style validation over generated pack.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/cli.py`
 - **READ_LINES:** `8-31, 58-77, 94-129`
@@ -193,7 +193,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/tests/test_io.py`
 - **READ_LINES:** `83-164`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `within TestAnimFormat`
+- **Lines Being Edited:** `110-164 within TestAnimFormat`
 - **Acceptance Criteria:** Old payloads still import; new metadata fields survive export/import unchanged.
 
 ---
