@@ -72,7 +72,13 @@ class StyleValidator:
             errors.append(f"Manifest status is '{manifest.get('status')}', expected 'ok'")
 
         expected = [clip.motion_type for clip in profile.required_clips]
-        actual = list((manifest.get("files") or {}).keys())
+        files = manifest.get("files")
+        if files is None:
+            files = {}
+        if not isinstance(files, dict):
+            errors.append("Manifest files must be an object")
+            files = {}
+        actual = list(files.keys())
 
         expected_set = set(expected)
         actual_set = set(actual)

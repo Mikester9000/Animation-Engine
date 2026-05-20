@@ -116,9 +116,9 @@ def _cmd_generate_pack(args: argparse.Namespace) -> int:
     if args.manifest_out:
         manifest_out = Path(args.manifest_out)
         manifest_out.parent.mkdir(parents=True, exist_ok=True)
+        manifest["manifest_path"] = str(manifest_out)
         with open(manifest_out, "w", encoding="utf-8") as fh:
             json.dump(manifest, fh, indent=2)
-        manifest["manifest_path"] = str(manifest_out)
 
     print("Pack generation summary:")
     print(f"  profile:   {manifest.get('profile_id')}")
@@ -223,6 +223,8 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from animation_engine.integration.style_profiles import DEFAULT_STYLE_PROFILE_ID
+
     parser = argparse.ArgumentParser(prog="animation-engine")
     subparsers = parser.add_subparsers(dest="command")
 
@@ -274,7 +276,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     generate_pack_parser.add_argument(
         "--profile",
-        default="ff10_ps2",
+        default=DEFAULT_STYLE_PROFILE_ID,
         help="Style profile ID (e.g. ff8_ps2, ff10_ps2, ff7_psx)",
     )
     generate_pack_parser.add_argument(

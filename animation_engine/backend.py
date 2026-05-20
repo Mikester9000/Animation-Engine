@@ -152,8 +152,16 @@ class ProceduralBackend(AnimationBackend):
                 step_duration = duration / (4 * cadence_scale)
                 for i in range(5):
                     t = i * step_duration
+                    if t >= duration:
+                        break
                     y_offset = (0.1 if i % 2 == 0 else -0.1) * amplitude_scale
                     clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0, y_offset, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, 0.1 * amplitude_scale, 0],
+                )
 
         elif motion_type == "run":
             # Faster cycle
@@ -162,8 +170,16 @@ class ProceduralBackend(AnimationBackend):
                 step_duration = duration / (6 * cadence_scale)
                 for i in range(7):
                     t = i * step_duration
+                    if t >= duration:
+                        break
                     y_offset = (0.15 if i % 2 == 0 else -0.15) * amplitude_scale
                     clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0, y_offset, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, 0.15 * amplitude_scale, 0],
+                )
 
         elif motion_type == "attack":
             if skeleton and len(skeleton.bones) > 0:

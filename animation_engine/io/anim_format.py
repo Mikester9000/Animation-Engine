@@ -63,6 +63,8 @@ class AnimExporter:
         model       : The Model to export.
         clips       : Animation clips to bundle (may be empty).
         morph_tracks: Morph-target weight tracks (may be empty).
+        metadata    : Optional JSON-serializable metadata object stored under
+                      top-level ``metadata`` in the exported .anim payload.
         path        : Output file path (must end in .anim by convention).
         indent      : JSON pretty-print indentation level (0 = compact).
 
@@ -131,7 +133,11 @@ class AnimImporter:
 
         Returns
         -------
-        (model, clips, morph_tracks) tuple.
+        If ``include_metadata`` is False:
+            (model, clips, morph_tracks)
+        If ``include_metadata`` is True:
+            (model, clips, morph_tracks, metadata), where metadata is either
+            the top-level ``metadata`` object or ``None`` when not present.
         """
         with open(path, "r", encoding="utf-8") as fh:
             payload = json.load(fh)

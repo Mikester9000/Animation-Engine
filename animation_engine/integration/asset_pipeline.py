@@ -10,6 +10,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from animation_engine.integration.style_profiles import DEFAULT_STYLE_PROFILE_ID
+
 __all__ = ["AnimationPipeline"]
 
 
@@ -31,7 +33,7 @@ class AnimationPipeline:
         backend: str = "procedural",
         sample_rate: float = 30.0,
         seed: int | None = None,
-        profile_id: str = "ff10_ps2",
+        profile_id: str = DEFAULT_STYLE_PROFILE_ID,
     ) -> None:
         from animation_engine.backend import BackendRegistry
 
