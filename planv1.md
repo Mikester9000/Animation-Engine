@@ -33,7 +33,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration`
 - **READ_LINES:** `directory only`
 - **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration/style_profiles.py`
-- **Lines Being Edited:** `new file 1-260`
+- **Lines Being Edited:** `new file 1-260 (target range, allow ±40 as needed)`
 - **Acceptance Criteria:** Registry exposes stable profile IDs and ordered clip requirements.
 
 ### Task 03
@@ -91,7 +91,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration/asset_pipeline.py`
 - **READ_LINES:** `39-44, 61-63, 83-86`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `61-63, 83-86 plus appended block after 86`
+- **Lines Being Edited:** `61-63, 83-110`
 - **Acceptance Criteria:** Pipeline returns and writes manifest with exact exported file inventory.
 
 ### Task 08
@@ -125,7 +125,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/cli.py`
 - **READ_LINES:** `8-31, 58-77, 94-129`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `new command handler block + parser additions`
+- **Lines Being Edited:** `8-31, 58-77, 94-140`
 - **Acceptance Criteria:** Non-zero exit when any required validator fails.
 
 ---
@@ -139,7 +139,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/qa`
 - **READ_LINES:** `directory only`
 - **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/qa/style_validator.py`
-- **Lines Being Edited:** `new file 1-300`
+- **Lines Being Edited:** `new file 1-300 (target range, allow ±60 as needed)`
 - **Acceptance Criteria:** Validator returns structured report with pass/fail, warnings, and error reasons.
 
 ### Task 12
@@ -159,7 +159,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/qa/style_validator.py`
 - **READ_LINES:** `1-300`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `append checker section`
+- **Lines Being Edited:** `180-300`
 - **Acceptance Criteria:** Missing, duplicate, or misnamed clips are reported as errors.
 
 ---
@@ -173,7 +173,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/tests/test_backend_qa_integration.py`
 - **READ_LINES:** `15-20, 71-81, 83-92`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `append after 92`
+- **Lines Being Edited:** `93-170`
 - **Acceptance Criteria:** Tests assert all required files exist and match profile order.
 
 ### Task 15
@@ -183,7 +183,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/tests/test_backend_qa_integration.py`
 - **READ_LINES:** `existing test block end`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `append new tests`
+- **Lines Being Edited:** `171-250`
 - **Acceptance Criteria:** Controlled fixtures produce expected error/warning outputs.
 
 ### Task 16
@@ -207,7 +207,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/README.md`
 - **READ_LINES:** `10-24, 137-150`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `insert new section after features and before compatibility`
+- **Lines Being Edited:** `25-41, 137-150`
 - **Acceptance Criteria:** README includes exact command flow and expected output tree.
 
 ### Task 18
@@ -217,7 +217,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/compat/README.md`
 - **READ_LINES:** `18-44, 65-143, 192-215`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `new sections in overview + integration steps + schema fields`
+- **Lines Being Edited:** `18-44, 65-143, 192-235`
 - **Acceptance Criteria:** Compat docs explicitly describe pack manifest ingestion and failure handling.
 
 ### Task 19
@@ -227,7 +227,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/compat/anim_to_cpp_header.py`
 - **READ_LINES:** `12-27, 360-409`
 - **File Edited or Created:** Edit existing file (docstring/CLI help) or compat README if kept docs-only
-- **Lines Being Edited:** `usage/help blocks only`
+- **Lines Being Edited:** `12-27, 360-374`
 - **Acceptance Criteria:** Batch conversion workflow is explicitly defined for GameRewritten release builds.
 
 ---
@@ -251,7 +251,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/README.md`
 - **READ_LINES:** `42-103`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `append deterministic release checklist`
+- **Lines Being Edited:** `104-136`
 - **Acceptance Criteria:** Docs provide exact command order and expected success conditions.
 
 ### Task 22
@@ -261,7 +261,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/planv1.md`
 - **READ_LINES:** `full file`
 - **File Edited or Created:** Edit this file only if criteria evolve
-- **Lines Being Edited:** `final section only`
+- **Lines Being Edited:** `267-286`
 - **Acceptance Criteria:** All required gates pass before release tag.
 
 ---
@@ -283,4 +283,3 @@ At completion, export package must include:
 - Pack manifest JSON with profile ID, clip inventory, and metadata.
 - Validation status report (pass/fail with reasons).
 - Updated compatibility documentation for import in GameRewritten repo.
-
