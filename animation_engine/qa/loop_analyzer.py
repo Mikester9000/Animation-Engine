@@ -79,8 +79,8 @@ class LoopAnalyzer:
             if len(channel.keyframes) < 2:
                 continue
 
-            first_kf = channel.keyframes[0]
-            last_kf = channel.keyframes[-1]
+            first_kf = min(channel.keyframes, key=lambda kf: kf.time)
+            last_kf = max(channel.keyframes, key=lambda kf: kf.time)
             target_name = getattr(channel.target, "name", str(channel.target))
 
             if target_name == "TRANSLATION":
@@ -96,6 +96,14 @@ class LoopAnalyzer:
                 # Check quaternion angular difference
                 q1 = first_kf.value
                 q2 = last_kf.value
+                # Normalize quaternions to guard against slight denormalization
+                mag1 = math.sqrt(sum(x**2 for x in q1))
+                mag2 = math.sqrt(sum(x**2 for x in q2))
+                if mag1 < 1e-9 or mag2 < 1e-9:
+                    # Near-zero magnitude quaternion — skip to avoid division by zero
+                    continue
+                q1 = [x / mag1 for x in q1]
+                q2 = [x / mag2 for x in q2]
                 dot = sum(
                     q1_component * q2_component
                     for q1_component, q2_component in zip(q1, q2)

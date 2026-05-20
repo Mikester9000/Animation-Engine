@@ -78,6 +78,24 @@ class SkeletonValidator:
                         f"(DAG violation)"
                     )
 
+        # Check that bone.index matches its position in the flat array
+        seen_indices: set[int] = set()
+        for idx, bone in enumerate(skeleton.bones):
+            if bone.index != idx:
+                errors.append(
+                    f"Bone '{bone.name}': stored index {bone.index} does not match "
+                    f"list position {idx}"
+                )
+            if bone.index in seen_indices:
+                errors.append(f"Bone '{bone.name}': duplicate bone index {bone.index}")
+            elif 0 <= bone.index < len(skeleton.bones):
+                seen_indices.add(bone.index)
+            else:
+                errors.append(
+                    f"Bone '{bone.name}': bone index {bone.index} out of range "
+                    f"[0, {len(skeleton.bones)})"
+                )
+
         # Warn if no root bone (parent_index = None/-1)
         root_count = sum(1 for b in skeleton.bones if b.parent_index in (None, -1))
         if root_count == 0:

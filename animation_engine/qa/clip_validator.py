@@ -4,7 +4,6 @@ Animation clip validator – detect common animation errors.
 Checks for:
 - Denormalized quaternions
 - Out-of-order keyframes
-- Missing bone references
 - Extreme translation/scale values
 """
 

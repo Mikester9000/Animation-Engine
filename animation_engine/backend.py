@@ -168,6 +168,10 @@ class BackendRegistry:
         backend_class:
             Class implementing AnimationBackend.
         """
+        if not (isinstance(backend_class, type) and issubclass(backend_class, AnimationBackend)):
+            raise TypeError(
+                f"backend_class must be a subclass of AnimationBackend, got {backend_class!r}"
+            )
         cls._registry[name] = backend_class
 
     @classmethod

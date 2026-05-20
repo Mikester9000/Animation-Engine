@@ -64,10 +64,15 @@ def _cmd_check_loop(args: argparse.Namespace) -> int:
     _, clips, _ = AnimImporter().import_file(args.input)
     analyzer = LoopAnalyzer()
 
+    all_seamless = True
     for clip in clips:
         report = analyzer.analyze_clip(clip)
         print(f"\nClip '{clip.name}': {report.summary()}")
+        if not report.is_seamless:
+            all_seamless = False
 
+    if not all_seamless:
+        return 1
     return 0
 
 
