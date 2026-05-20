@@ -1,6 +1,6 @@
-# planv1 — Animation Engine to Retail-Grade GameRewritten Export
+# planv1 — Animation Engine to Retail-Grade Mikester9000/GameRewritten Export
 
-This file is the single ordered master plan from current repository state to a retail-grade animation asset pipeline that exports cleanly into GameRewritten.
+This file is the single ordered master plan from current repository state to a retail-grade animation asset pipeline that exports cleanly into `Mikester9000/GameRewritten`.
 
 ---
 
@@ -18,7 +18,7 @@ This file is the single ordered master plan from current repository state to a r
 
 ### Task 01
 - **Task Name:** Add style metadata envelope to `.anim` payload
-- **Narrative Logic:** Retail-ready assets need explicit style identity (FF7/FF8/FF10 nostalgia direction) embedded with animation data so GameRewritten can consume and tag packs reliably.
+- **Narrative Logic:** Retail-ready assets need explicit style identity (FF7/FF8/FF10 nostalgia direction) embedded with animation data so `Mikester9000/GameRewritten` can consume and tag packs reliably.
 - **Code Structure Need:** Extend serializer/deserializer schema with optional metadata block while preserving existing format compatibility.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/io/anim_format.py`
 - **READ_LINES:** `33-38, 49-77, 90-103, 137-158`
@@ -76,7 +76,7 @@ This file is the single ordered master plan from current repository state to a r
 
 ### Task 06
 - **Task Name:** Replace fixed 4-clip list with profile manifest
-- **Narrative Logic:** GameRewritten needs complete pack generation in one pass, not demo-only motion output.
+- **Narrative Logic:** `Mikester9000/GameRewritten` needs complete pack generation in one pass, not demo-only motion output.
 - **Code Structure Need:** Pipeline reads ordered clip manifest from profile registry and generates all required files.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration/asset_pipeline.py`
 - **READ_LINES:** `15-16, 39-44, 64-86`
@@ -86,7 +86,7 @@ This file is the single ordered master plan from current repository state to a r
 
 ### Task 07
 - **Task Name:** Emit pack-level manifest JSON beside `.anim` files
-- **Narrative Logic:** GameRewritten import stage requires machine-readable index of all generated assets and metadata.
+- **Narrative Logic:** `Mikester9000/GameRewritten` import stage requires machine-readable index of all generated assets and metadata.
 - **Code Structure Need:** Add deterministic manifest writer with profile ID, clip list, file paths, and generation version.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration/asset_pipeline.py`
 - **READ_LINES:** `39-44, 61-63, 83-86`
@@ -110,7 +110,7 @@ This file is the single ordered master plan from current repository state to a r
 
 ### Task 09
 - **Task Name:** Add CLI command for full nostalgia pack generation
-- **Narrative Logic:** One command must produce all assets needed for GameRewritten integration.
+- **Narrative Logic:** One command must produce all assets needed for `Mikester9000/GameRewritten` integration.
 - **Code Structure Need:** Add subcommand for output dir, profile choice, skeleton source, and manifest path.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/cli.py`
 - **READ_LINES:** `94-129, 132-140`
@@ -120,7 +120,7 @@ This file is the single ordered master plan from current repository state to a r
 
 ### Task 10
 - **Task Name:** Add CLI command for pack validation gate
-- **Narrative Logic:** Export to GameRewritten should be blocked when quality gates fail.
+- **Narrative Logic:** Export to `Mikester9000/GameRewritten` should be blocked when quality gates fail.
 - **Code Structure Need:** Add subcommand to run clip, loop, skeleton, and style validation over generated pack.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/cli.py`
 - **READ_LINES:** `8-31, 58-77, 94-129`
@@ -198,7 +198,7 @@ This file is the single ordered master plan from current repository state to a r
 
 ---
 
-## Phase G — GameRewritten Compatibility and Hand-off
+## Phase G — Mikester9000/GameRewritten Compatibility and Hand-off
 
 ### Task 17
 - **Task Name:** Document profile-based pack export for engine users
@@ -212,7 +212,7 @@ This file is the single ordered master plan from current repository state to a r
 
 ### Task 18
 - **Task Name:** Update compatibility bridge documentation
-- **Narrative Logic:** GameRewritten integration requires clear runtime vs pre-baked workflow for expanded pack output.
+- **Narrative Logic:** `Mikester9000/GameRewritten` integration requires clear runtime vs pre-baked workflow for expanded pack output.
 - **Code Structure Need:** Update compat guide with profile pack manifest usage and validation expectations before import.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/compat/README.md`
 - **READ_LINES:** `18-44, 65-143, 192-215`
@@ -228,7 +228,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_LINES:** `12-27, 360-409`
 - **File Edited or Created:** Edit existing file (docstring/CLI help) or compat README if kept docs-only
 - **Lines Being Edited:** `12-27, 360-374`
-- **Acceptance Criteria:** Batch conversion workflow is explicitly defined for GameRewritten release builds.
+- **Acceptance Criteria:** Batch conversion workflow is explicitly defined for `Mikester9000/GameRewritten` release builds.
 
 ---
 
@@ -256,7 +256,7 @@ This file is the single ordered master plan from current repository state to a r
 
 ### Task 22
 - **Task Name:** Final acceptance gate for retail-grade export
-- **Narrative Logic:** Conclude with a measurable go/no-go standard for GameRewritten handoff.
+- **Narrative Logic:** Conclude with a measurable go/no-go standard for `Mikester9000/GameRewritten` handoff.
 - **Code Structure Need:** Define required pass matrix: tests green, validators green, full pack generated, compat docs updated.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/planv1.md`
 - **READ_LINES:** `full file`
@@ -272,14 +272,14 @@ This file is the single ordered master plan from current repository state to a r
 2. Generate at least one full nostalgia profile pack through CLI.
 3. Run CLI validation command against generated pack.
 4. Verify pack manifest lists all required clips in order.
-5. Verify GameRewritten compatibility path (runtime load and/or pre-baked header flow) with updated docs.
+5. Verify `Mikester9000/GameRewritten` compatibility path (runtime load and/or pre-baked header flow) with updated docs.
 
 ---
 
-## Output Contract for GameRewritten Handoff
+## Output Contract for Mikester9000/GameRewritten Handoff
 
 At completion, export package must include:
 - Complete ordered `.anim` clip set per selected profile.
 - Pack manifest JSON with profile ID, clip inventory, and metadata.
 - Validation status report (pass/fail with reasons).
-- Updated compatibility documentation for import in GameRewritten repo.
+- Updated compatibility documentation for import in `Mikester9000/GameRewritten` repo.
