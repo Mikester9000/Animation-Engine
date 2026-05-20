@@ -148,9 +148,9 @@ This file is the single ordered master plan from current repository state to a r
 - **Narrative Logic:** CLI and tests need stable import path for new validator.
 - **Code Structure Need:** Update QA package exports.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/qa/__init__.py`
-- **READ_LINES:** `FULL_FILE`
+- **READ_LINES:** `1-29`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `FULL_FILE`
+- **Lines Being Edited:** `1-29`
 - **Acceptance Criteria:** Public QA API includes new style validator symbols.
 
 ### Task 13
@@ -182,7 +182,7 @@ This file is the single ordered master plan from current repository state to a r
 - **Narrative Logic:** Retail quality gates must be deterministic and test-covered.
 - **Code Structure Need:** Add QA tests validating both compliant and non-compliant clip sets.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/tests/test_backend_qa_integration.py`
-- **READ_LINES:** `existing test block end`
+- **READ_LINES:** `83-92`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `171-250`
 - **Acceptance Criteria:** Controlled fixtures produce expected error/warning outputs.
