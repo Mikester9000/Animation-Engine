@@ -115,6 +115,7 @@ class ProceduralBackend(AnimationBackend):
         from animation_engine.animation.channel import ChannelTarget
 
         def _unit_axis_quat(axis_value: float, axis: str) -> list[float]:
+            # Engine convention is [x, y, z, w] (same as Quaternion.to_list/from_list).
             value = max(min(axis_value, 0.999999), -0.999999)
             w = math.sqrt(max(0.0, 1.0 - (value * value)))
             if axis == "x":

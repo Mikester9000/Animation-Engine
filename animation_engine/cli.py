@@ -198,11 +198,12 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
                 print(f"  WARN: {warn}")
 
         profile_id = str(manifest.get("profile_id", "")).strip()
-        if metadata is not None and metadata.get("style_profile") not in ("", profile_id):
+        style_profile = metadata.get("style_profile") if metadata is not None else None
+        if style_profile and style_profile != profile_id:
             all_valid = False
             print(
                 f"ERROR [{motion}]: metadata style_profile "
-                f"{metadata.get('style_profile')} != manifest profile_id {profile_id}"
+                f"{style_profile} != manifest profile_id {profile_id}"
             )
 
     style_report = style_validator.validate_pack(
