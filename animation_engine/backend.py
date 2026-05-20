@@ -13,6 +13,7 @@ Future backends could wrap:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import math
 from typing import Any
 
 __all__ = ["AnimationBackend", "ProceduralBackend", "BackendRegistry"]
@@ -113,6 +114,13 @@ class ProceduralBackend(AnimationBackend):
         from animation_engine.animation import AnimationClip
         from animation_engine.animation.channel import ChannelTarget
 
+        def _unit_axis_quat(axis_value: float, axis: str) -> list[float]:
+            value = max(min(axis_value, 0.999999), -0.999999)
+            w = math.sqrt(max(0.0, 1.0 - (value * value)))
+            if axis == "x":
+                return [value, 0.0, 0.0, w]
+            return [0.0, value, 0.0, w]
+
         clip = AnimationClip(motion_type, fps=self.sample_rate, loop=True)
         # Clamp to avoid divide-by-zero / near-zero step durations.
         cadence_scale = max(float(kwargs.get("cadence_scale", 1.0)), 1e-3)
@@ -123,7 +131,7 @@ class ProceduralBackend(AnimationBackend):
             # Slight breathing motion on spine
             if skeleton and len(skeleton.bones) > 1:
                 spine_name = skeleton.bones[1].name
-                breathe_rotation = [0, 0.02 * amplitude_scale, 0, 0.9998]
+                breathe_rotation = _unit_axis_quat(0.02 * amplitude_scale, axis="y")
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
                 clip.add_keyframe(
                     spine_name,
@@ -173,7 +181,7 @@ class ProceduralBackend(AnimationBackend):
                     spine_name,
                     ChannelTarget.ROTATION,
                     duration * 0.35,
-                    [0.03 * amplitude_scale, 0, 0, 0.9995],
+                    _unit_axis_quat(0.03 * amplitude_scale, axis="x"),
                 )
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 
@@ -257,7 +265,7 @@ class ProceduralBackend(AnimationBackend):
                     spine_name,
                     ChannelTarget.ROTATION,
                     duration * 0.5,
-                    [0, 0.08 * amplitude_scale, 0, 0.9968],
+                    _unit_axis_quat(0.08 * amplitude_scale, axis="y"),
                 )
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 
@@ -270,7 +278,7 @@ class ProceduralBackend(AnimationBackend):
                     root_name,
                     ChannelTarget.ROTATION,
                     duration,
-                    [0, direction * 0.15 * amplitude_scale, 0, 0.9887],
+                    _unit_axis_quat(direction * 0.15 * amplitude_scale, axis="y"),
                 )
 
         elif motion_type == "crouch":

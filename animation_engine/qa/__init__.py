@@ -17,6 +17,7 @@ Usage
 from animation_engine.qa.clip_validator import ClipValidator, ValidationReport
 from animation_engine.qa.skeleton_validator import SkeletonValidator, SkeletonReport
 from animation_engine.qa.loop_analyzer import LoopAnalyzer, LoopReport
+from animation_engine.qa.style_validator import StyleValidator, StyleValidationReport
 
 __all__ = [
     "ClipValidator",
@@ -25,4 +26,6 @@ __all__ = [
     "SkeletonReport",
     "LoopAnalyzer",
     "LoopReport",
+    "StyleValidator",
+    "StyleValidationReport",
 ]

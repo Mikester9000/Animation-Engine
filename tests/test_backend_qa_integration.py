@@ -5,11 +5,16 @@ from pathlib import Path
 from animation_engine.animation import AnimationClip
 from animation_engine.animation.channel import ChannelTarget
 from animation_engine.backend import AnimationBackend, BackendRegistry, ProceduralBackend
-from animation_engine.cli import build_parser, _cmd_list_backends
+from animation_engine.cli import (
+    build_parser,
+    _cmd_generate_pack,
+    _cmd_list_backends,
+    _cmd_validate_pack,
+)
 from animation_engine.integration import AnimationPipeline, get_style_profile, list_style_profiles
-from animation_engine.io import AnimImporter
-from animation_engine.model import Skeleton
-from animation_engine.qa import ClipValidator, LoopAnalyzer, SkeletonValidator
+from animation_engine.io import AnimExporter, AnimImporter
+from animation_engine.model import Model, Skeleton
+from animation_engine.qa import ClipValidator, LoopAnalyzer, SkeletonValidator, StyleValidator
 
 
 def _make_skeleton() -> Skeleton:
@@ -94,6 +99,18 @@ def test_style_profiles_registry_exposes_expected_profiles():
     assert "ff10_ps2" in profile_ids
 
 
+def test_style_validator_detects_missing_required_clips():
+    manifest = {
+        "profile_id": "ff10_ps2",
+        "status": "ok",
+        "files": {"idle": "/tmp/idle.anim"},
+    }
+    report = StyleValidator().validate_pack(manifest)
+    assert not report.is_valid
+    assert "walk" in report.missing_clips
+    assert any("Missing required clips" in err for err in report.errors)
+
+
 def test_cli_parser_and_list_backends_command(capsys):
     parser = build_parser()
     args = parser.parse_args(["list-backends"])
@@ -103,3 +120,32 @@ def test_cli_parser_and_list_backends_command(capsys):
     out = capsys.readouterr().out
     assert exit_code == 0
     assert "procedural" in out
+
+
+def test_cli_generate_pack_and_validate_pack_commands(tmp_path, capsys):
+    source_anim = tmp_path / "source.anim"
+    model = Model("source")
+    model.skeleton = _make_skeleton()
+    AnimExporter().export(model, [], path=str(source_anim))
+
+    output_dir = tmp_path / "pack"
+    parser = build_parser()
+    generate_args = parser.parse_args(
+        [
+            "generate-pack",
+            "--skeleton-anim",
+            str(source_anim),
+            "--output-dir",
+            str(output_dir),
+            "--profile",
+            "ff10_ps2",
+        ]
+    )
+    assert _cmd_generate_pack(generate_args) == 0
+    manifest_path = output_dir / "pack_manifest.json"
+    assert manifest_path.exists()
+
+    validate_args = parser.parse_args(["validate-pack", "--manifest", str(manifest_path)])
+    assert _cmd_validate_pack(validate_args) == 0
+    out = capsys.readouterr().out
+    assert "Style report:" in out
