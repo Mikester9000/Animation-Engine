@@ -178,4 +178,7 @@ class AnimImporter:
             MorphTrack.from_dict(mt) for mt in payload.get("morph_tracks", [])
         ]
         metadata = payload.get("metadata")
-        return model, clips, morph_tracks, metadata if isinstance(metadata, dict) else None
+        parsed_metadata: Optional[dict[str, Any]] = None
+        if isinstance(metadata, dict):
+            parsed_metadata = metadata
+        return model, clips, morph_tracks, parsed_metadata

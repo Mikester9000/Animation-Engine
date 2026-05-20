@@ -114,6 +114,7 @@ class ProceduralBackend(AnimationBackend):
         from animation_engine.animation.channel import ChannelTarget
 
         clip = AnimationClip(motion_type, fps=self.sample_rate, loop=True)
+        # Clamp to avoid divide-by-zero / near-zero step durations.
         cadence_scale = max(float(kwargs.get("cadence_scale", 1.0)), 1e-3)
         amplitude_scale = float(kwargs.get("amplitude_scale", 1.0))
 

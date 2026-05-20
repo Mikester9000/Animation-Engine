@@ -101,7 +101,7 @@ class AnimationPipeline:
                     path=str(output_path),
                 )
                 generated[motion] = str(output_path)
-            except Exception as exc:  # pragma: no cover - defensive catch
+            except (ValueError, RuntimeError, OSError, TypeError) as exc:
                 failed[motion] = str(exc)
 
         manifest_path = output_dir / "pack_manifest.json"
