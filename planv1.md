@@ -9,7 +9,7 @@ This file is the single ordered master plan from current repository state to a r
 1. Execute tasks strictly in numeric order.
 2. Each task edits or creates one file only.
 3. Do not skip validation gates.
-4. Do not start the next task until current task acceptance criteria is met.
+4. Do not start the next task until current task acceptance criteria are met.
 5. Keep every change deterministic and backward compatible unless the task explicitly says otherwise.
 6. `READ_LINES` uses only two deterministic formats: numeric ranges (`start-end` comma-separated) or keyword `FULL_FILE` / `DIRECTORY`.
 
@@ -31,10 +31,10 @@ This file is the single ordered master plan from current repository state to a r
 - **Task Name:** Create nostalgia style profile registry
 - **Narrative Logic:** Generation must be profile-driven so outputs are consistent and reproducible across FF7-like, FF8-like, and FF10-like variants.
 - **Code Structure Need:** Add centralized immutable style profile definitions for motion packs, clip timing, naming, and cinematic mood.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration`
+- **READ_DIRECTORY:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration`
 - **READ_LINES:** `DIRECTORY`
 - **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration/style_profiles.py`
-- **Lines Being Edited:** `new file 1-260`
+- **Lines Being Edited:** `1-260`
 - **Acceptance Criteria:** Registry exposes stable profile IDs and ordered clip requirements.
 
 ### Task 03
@@ -137,10 +137,10 @@ This file is the single ordered master plan from current repository state to a r
 - **Task Name:** Create style validator module
 - **Narrative Logic:** Nostalgia target must be measurable, not subjective only.
 - **Code Structure Need:** Add profile-aware validation rules for cadence, loop smoothness, and motion coverage.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/qa`
+- **READ_DIRECTORY:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/qa`
 - **READ_LINES:** `DIRECTORY`
 - **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/qa/style_validator.py`
-- **Lines Being Edited:** `new file 1-300`
+- **Lines Being Edited:** `1-300`
 - **Acceptance Criteria:** Validator returns structured report with pass/fail, warnings, and error reasons.
 
 ### Task 12
@@ -227,7 +227,7 @@ This file is the single ordered master plan from current repository state to a r
 - **Code Structure Need:** Document and/or script deterministic per-clip conversion workflow for `anim_to_cpp_header.py`.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/compat/anim_to_cpp_header.py`
 - **READ_LINES:** `12-27, 360-409`
-- **File Edited or Created:** Edit existing file (docstring/CLI help) or compat README if kept docs-only
+- **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `12-27, 360-374`
 - **Acceptance Criteria:** Batch conversion workflow is explicitly defined for `Mikester9000/GameRewritten` release builds.
 
@@ -242,7 +242,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration/asset_pipeline.py`
 - **READ_LINES:** `28-38, 61-63, 83-86`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `28-38 and manifest block`
+- **Lines Being Edited:** `28-38, 61-63, 83-110`
 - **Acceptance Criteria:** Same inputs produce byte-stable pack outputs (excluding timestamps if any).
 
 ### Task 21
