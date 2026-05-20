@@ -115,11 +115,14 @@ class ProceduralBackend(AnimationBackend):
         from animation_engine.animation.channel import ChannelTarget
 
         def _unit_axis_quat(axis_value: float, axis: str) -> list[float]:
+            """Return a unit quaternion in engine [x, y, z, w] storage order."""
             # Engine convention is [x, y, z, w] (same as Quaternion.to_list/from_list).
             value = max(min(axis_value, 0.999999), -0.999999)
             w = math.sqrt(max(0.0, 1.0 - (value * value)))
             if axis == "x":
                 return [value, 0.0, 0.0, w]
+            if axis == "z":
+                return [0.0, 0.0, value, w]
             return [0.0, value, 0.0, w]
 
         clip = AnimationClip(motion_type, fps=self.sample_rate, loop=True)

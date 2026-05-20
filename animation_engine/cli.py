@@ -158,6 +158,7 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
     all_valid = True
     clip_durations: dict[str, float] = {}
     loop_reports = {}
+    profile_id = str(manifest.get("profile_id", "")).strip()
 
     for motion, file_path in sorted(files.items()):
         path = Path(file_path)
@@ -197,7 +198,6 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
             for warn in clip_report.warnings:
                 print(f"  WARN: {warn}")
 
-        profile_id = str(manifest.get("profile_id", "")).strip()
         style_profile = metadata.get("style_profile") if metadata is not None else None
         if style_profile and style_profile != profile_id:
             all_valid = False
