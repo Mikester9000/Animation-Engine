@@ -25,3 +25,15 @@ animation_engine.editor       – Tkinter-based timeline / model editor
 
 __version__ = "1.0.0"
 __author__ = "Animation Engine Team"
+
+from animation_engine.animation import AnimationClip
+from animation_engine.backend import AnimationBackend, BackendRegistry, ProceduralBackend
+from animation_engine.model import Model
+
+__all__ = [
+    "Model",
+    "AnimationClip",
+    "AnimationBackend",
+    "ProceduralBackend",
+    "BackendRegistry",
+]
