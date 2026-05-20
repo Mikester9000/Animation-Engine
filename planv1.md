@@ -11,6 +11,7 @@ This file is the single ordered master plan from current repository state to a r
 3. Do not skip validation gates.
 4. Do not start the next task until current task acceptance criteria is met.
 5. Keep every change deterministic and backward compatible unless the task explicitly says otherwise.
+6. `READ_LINES` uses only two deterministic formats: numeric ranges (`start-end` comma-separated) or keyword `FULL_FILE` / `DIRECTORY`.
 
 ---
 
@@ -31,9 +32,9 @@ This file is the single ordered master plan from current repository state to a r
 - **Narrative Logic:** Generation must be profile-driven so outputs are consistent and reproducible across FF7-like, FF8-like, and FF10-like variants.
 - **Code Structure Need:** Add centralized immutable style profile definitions for motion packs, clip timing, naming, and cinematic mood.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration`
-- **READ_LINES:** `directory only`
+- **READ_LINES:** `DIRECTORY`
 - **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration/style_profiles.py`
-- **Lines Being Edited:** `new file 1-260 (target range, allow ±40 as needed)`
+- **Lines Being Edited:** `new file 1-260`
 - **Acceptance Criteria:** Registry exposes stable profile IDs and ordered clip requirements.
 
 ### Task 03
@@ -137,9 +138,9 @@ This file is the single ordered master plan from current repository state to a r
 - **Narrative Logic:** Nostalgia target must be measurable, not subjective only.
 - **Code Structure Need:** Add profile-aware validation rules for cadence, loop smoothness, and motion coverage.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/qa`
-- **READ_LINES:** `directory only`
+- **READ_LINES:** `DIRECTORY`
 - **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/qa/style_validator.py`
-- **Lines Being Edited:** `new file 1-300 (target range, allow ±60 as needed)`
+- **Lines Being Edited:** `new file 1-300`
 - **Acceptance Criteria:** Validator returns structured report with pass/fail, warnings, and error reasons.
 
 ### Task 12
@@ -147,9 +148,9 @@ This file is the single ordered master plan from current repository state to a r
 - **Narrative Logic:** CLI and tests need stable import path for new validator.
 - **Code Structure Need:** Update QA package exports.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/qa/__init__.py`
-- **READ_LINES:** `1-end`
+- **READ_LINES:** `FULL_FILE`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `1-end`
+- **Lines Being Edited:** `FULL_FILE`
 - **Acceptance Criteria:** Public QA API includes new style validator symbols.
 
 ### Task 13
@@ -259,7 +260,7 @@ This file is the single ordered master plan from current repository state to a r
 - **Narrative Logic:** Conclude with a measurable go/no-go standard for `Mikester9000/GameRewritten` handoff.
 - **Code Structure Need:** Define required pass matrix: tests green, validators green, full pack generated, compat docs updated.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/planv1.md`
-- **READ_LINES:** `full file`
+- **READ_LINES:** `FULL_FILE`
 - **File Edited or Created:** Edit this file only if criteria evolve
 - **Lines Being Edited:** `267-286`
 - **Acceptance Criteria:** All required gates pass before release tag.
