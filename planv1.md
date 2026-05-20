@@ -194,7 +194,7 @@ This file is the single ordered master plan from current repository state to a r
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/tests/test_io.py`
 - **READ_LINES:** `83-164`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `110-164 within TestAnimFormat`
+- **Lines Being Edited:** `110-164`
 - **Acceptance Criteria:** Old payloads still import; new metadata fields survive export/import unchanged.
 
 ---
@@ -269,7 +269,7 @@ This file is the single ordered master plan from current repository state to a r
 
 ## Required Validation Gates After Implementation
 
-1. `python -m pytest -q`
+1. `python -m pytest -v`
 2. Generate at least one full nostalgia profile pack through CLI.
 3. Run CLI validation command against generated pack.
 4. Verify pack manifest lists all required clips in order.
