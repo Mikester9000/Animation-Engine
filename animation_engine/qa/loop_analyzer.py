@@ -85,15 +85,21 @@ class LoopAnalyzer:
 
             if target_name == "TRANSLATION":
                 # Check position jump
-                diff = [(a - b) for a, b in zip(first_kf.value[:3], last_kf.value[:3])]
-                jump = math.sqrt(sum(d**2 for d in diff))
+                position_diff = [
+                    (last_val - first_val)
+                    for first_val, last_val in zip(first_kf.value[:3], last_kf.value[:3])
+                ]
+                jump = math.sqrt(sum(delta**2 for delta in position_diff))
                 max_pos_jump = max(max_pos_jump, jump)
 
             elif target_name == "ROTATION":
                 # Check quaternion angular difference
                 q1 = first_kf.value
                 q2 = last_kf.value
-                dot = sum(a * b for a, b in zip(q1, q2))
+                dot = sum(
+                    q1_component * q2_component
+                    for q1_component, q2_component in zip(q1, q2)
+                )
                 # Handle quaternion double-cover: q and -q represent same rotation
                 dot = abs(dot)
                 # Clamp to avoid numerical errors in acos

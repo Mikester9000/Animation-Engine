@@ -103,13 +103,14 @@ class ProceduralBackend(AnimationBackend):
         if motion_type == "idle":
             # Slight breathing motion on spine
             if skeleton and len(skeleton.bones) > 1:
-                spine_name = skeleton.bones[1].name if len(skeleton.bones) > 1 else "root"
+                spine_name = skeleton.bones[1].name
+                breathe_rotation = [0, 0.02, 0, 0.9998]
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
                 clip.add_keyframe(
                     spine_name,
                     ChannelTarget.ROTATION,
                     duration / 2,
-                    [0, 0.02, 0, 0.9998],
+                    breathe_rotation,
                 )
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 

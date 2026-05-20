@@ -23,7 +23,7 @@ animation_engine.runtime      – Runtime Animator and CPU Skinning
 animation_engine.editor       – Tkinter-based timeline / model editor
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __author__ = "Animation Engine Team"
 
 from animation_engine.animation import AnimationClip
