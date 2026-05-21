@@ -13,7 +13,12 @@ from animation_engine.cli import (
     _cmd_list_backends,
     _cmd_validate_pack,
 )
-from animation_engine.integration import AnimationPipeline, get_style_profile, list_style_profiles
+from animation_engine.integration import (
+    AnimationPipeline,
+    DEFAULT_STYLE_PROFILE_ID,
+    get_style_profile,
+    list_style_profiles,
+)
 from animation_engine.io import AnimExporter, AnimImporter
 from animation_engine.model import Model, Skeleton
 from animation_engine.qa import ClipValidator, LoopAnalyzer, SkeletonValidator, StyleValidator
@@ -118,6 +123,7 @@ def test_pipeline_generates_anim_files(tmp_path):
 def test_style_profiles_registry_exposes_expected_profiles():
     profiles = list_style_profiles()
     profile_ids = [p.profile_id for p in profiles]
+    assert DEFAULT_STYLE_PROFILE_ID == "ff10_ps2"
     assert "ff7_ps2" in profile_ids
     assert "ff8_ps2" in profile_ids
     assert "ff9_ps2" in profile_ids

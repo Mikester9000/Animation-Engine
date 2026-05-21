@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 
 def _cmd_validate_clip(args: argparse.Namespace) -> int:
@@ -93,6 +94,25 @@ def _cmd_list_backends(args: argparse.Namespace) -> int:
     return 0
 
 
+def _manifest_backend_name(manifest: dict[str, Any]) -> Any:
+    """Return the backend name from a pack manifest.
+
+    Parameters
+    ----------
+    manifest:
+        Parsed manifest JSON object.
+
+    Returns
+    -------
+    Any
+        `backend_name` when present, otherwise the legacy `backend` value.
+    """
+    backend_name = manifest.get("backend_name")
+    if backend_name is not None:
+        return backend_name
+    return manifest.get("backend")
+
+
 def _cmd_generate_pack(args: argparse.Namespace) -> int:
     """Generate a full profile pack from a source skeleton .anim."""
     from animation_engine.integration import AnimationPipeline
@@ -124,7 +144,7 @@ def _cmd_generate_pack(args: argparse.Namespace) -> int:
     print(f"  profile:   {manifest.get('profile_id')}")
     print(f"  status:    {manifest.get('status')}")
     print(f"  generated: {manifest.get('generated')}/{manifest.get('expected')}")
-    print(f"  backend:   {manifest.get('backend_name', manifest.get('backend'))}")
+    print(f"  backend:   {_manifest_backend_name(manifest)}")
     print(f"  seed:      {manifest.get('seed')}")
     print(f"  manifest:  {manifest.get('manifest_path')}")
     if manifest.get("failed"):

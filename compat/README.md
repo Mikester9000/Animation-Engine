@@ -151,6 +151,12 @@ For a generated pack, iterate the ordered file list from `pack_manifest.json`
 and convert each clip deterministically so release builds preserve the same
 PS2-era art-direction contract used during generation and validation.
 
+```bash
+python compat/anim_to_cpp_header.py \
+    --manifest assets/hero_pack/pack_manifest.json \
+    --output-dir path/to/Game-Engine/src/game/data/generated_headers
+```
+
 **Convert the file**
 
 ```bash

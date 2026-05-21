@@ -88,17 +88,21 @@ class StyleValidator:
             actual = []
             seen: set[str] = set()
             duplicates: list[str] = []
-            for entry in ordered_files:
+            for index, entry in enumerate(ordered_files):
                 if not isinstance(entry, dict):
-                    errors.append("Manifest ordered_files entries must be objects")
+                    errors.append(f"Manifest ordered_files[{index}] entries must be objects")
                     continue
                 motion = entry.get("motion_type")
                 if not isinstance(motion, str):
-                    errors.append("Manifest ordered_files entries must have string motion_type")
+                    errors.append(
+                        f"Manifest ordered_files[{index}] entries must have string motion_type"
+                    )
                     continue
                 motion = motion.strip()
                 if not motion:
-                    errors.append("Manifest ordered_files entries must have non-empty motion_type")
+                    errors.append(
+                        f"Manifest ordered_files[{index}] entries must have non-empty motion_type"
+                    )
                     continue
                 actual.append(motion)
                 if motion in seen:
@@ -119,7 +123,7 @@ class StyleValidator:
         if extra:
             errors.append(f"Unexpected clip ids: {', '.join(extra)}")
 
-        if ordered_files_present and actual != expected:
+        if ordered_files_present and actual and actual != expected:
             errors.append(
                 "Clip order mismatch: expected "
                 f"{', '.join(expected)}; got {', '.join(actual)}"
