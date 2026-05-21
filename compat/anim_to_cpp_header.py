@@ -18,6 +18,11 @@ Usage
     # With a custom C++ namespace identifier:
     python compat/anim_to_cpp_header.py assets/noctis.anim --var NOCTIS
 
+    # Batch convert a generated pack manifest into one header per clip:
+    python compat/anim_to_cpp_header.py \
+        --manifest assets/hero_pack/pack_manifest.json \
+        --output-dir path/to/Game-Engine/src/game/data/generated_headers
+
 Then in your C++ Game Engine source::
 
     #include "compat/GameEngineCompat.hpp"
@@ -44,7 +49,9 @@ Two integration strategies exist:
 2. **Pre-baked header** (this script): the .anim data is compiled directly
    into the executable.  Pros: zero runtime I/O, zero JSON parsing overhead,
    no asset file required at runtime; Cons: the game must be recompiled when
-   animations change.  Ideal for small student projects.
+   animations change.  Ideal for small student projects.  For generated packs,
+   use ``--manifest`` so headers are emitted in the same deterministic order
+   recorded by ``pack_manifest.json``.
 """
 
 from __future__ import annotations
@@ -74,6 +81,123 @@ def _float_list(values: List[Any], indent: int = 0) -> str:
     pad = " " * indent
     items = ", ".join(f"{float(v):.8f}f" for v in values)
     return f"{{{items}}}"
+
+
+def _derive_var_name(path: Path) -> str:
+    stem = _ident(path.stem).upper()
+    return stem or "UNNAMED_ANIM"
+
+
+def _load_anim_payload(path: Path) -> dict:
+    with open(path, "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _convert_anim_payload(payload: dict, var_name: str) -> str:
+    return generate(payload, var_name)
+
+
+def convert_anim_file(input_path: Path, var_name: str | None = None) -> str:
+    """Return a C++ header string for one .anim file.
+
+    Parameters
+    ----------
+    input_path:
+        Path to the source .anim file.
+    var_name:
+        Optional explicit C++ identifier for the generated package.
+
+    Returns
+    -------
+    str
+        Generated C++ header source.
+    """
+    payload = _load_anim_payload(input_path)
+    return _convert_anim_payload(payload, var_name or _derive_var_name(input_path))
+
+
+def _manifest_entries(manifest: dict, base_dir: Path) -> list[tuple[str, Path]]:
+    """Extract ordered motion/path pairs from a pack manifest.
+
+    Parameters
+    ----------
+    manifest:
+        Parsed pack manifest JSON.
+    base_dir:
+        Directory used to resolve relative .anim paths.
+
+    Returns
+    -------
+    list[tuple[str, Path]]
+        Motion type and resolved animation file path pairs.
+
+    Raises
+    ------
+    ValueError
+        If ``ordered_files`` is present but is not a list, contains malformed
+        entries, or contains no usable entries.
+    """
+    ordered_files_present = "ordered_files" in manifest
+    ordered_files = manifest.get("ordered_files")
+    entries: list[tuple[str, Path]] = []
+    if ordered_files_present:
+        if not isinstance(ordered_files, list):
+            raise ValueError("Manifest ordered_files must be a list")
+        for entry in ordered_files:
+            if not isinstance(entry, dict):
+                raise ValueError("Manifest ordered_files entries must be objects")
+            motion = str(entry.get("motion_type", "")).strip()
+            file_path = str(entry.get("path", "")).strip()
+            if not motion or not file_path:
+                raise ValueError("Manifest ordered_files entries must include motion_type and path")
+            anim_path = Path(file_path)
+            if not anim_path.is_absolute():
+                anim_path = base_dir / anim_path
+            entries.append((motion, anim_path))
+        if not entries:
+            raise ValueError("Manifest ordered_files must contain at least one entry")
+        return entries
+
+    files = manifest.get("files", {})
+    if isinstance(files, dict):
+        for motion, file_path in sorted(files.items()):
+            motion_name = str(motion).strip()
+            file_name = str(file_path).strip()
+            if motion_name and file_name:
+                anim_path = Path(file_name)
+                if not anim_path.is_absolute():
+                    anim_path = base_dir / anim_path
+                entries.append((motion_name, anim_path))
+    return entries
+
+
+def convert_pack_manifest(manifest_path: Path, output_dir: Path) -> list[Path]:
+    """Convert each pack entry referenced by a manifest into a C++ header.
+
+    Parameters
+    ----------
+    manifest_path:
+        Path to the pack_manifest.json file.
+    output_dir:
+        Directory where generated headers will be written.
+
+    Returns
+    -------
+    list[Path]
+        Paths to the generated header files in manifest order.
+    """
+    manifest = _load_anim_payload(manifest_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    written: list[Path] = []
+    for motion_type, anim_path in _manifest_entries(manifest, manifest_path.parent):
+        header_stem = _ident(motion_type).lower()
+        header_path = output_dir / f"{header_stem}.hpp"
+        header_source = convert_anim_file(anim_path, var_name=_derive_var_name(anim_path))
+        with open(header_path, "w", encoding="utf-8") as fh:
+            fh.write(header_source)
+        written.append(header_path)
+    return written
 
 
 # ---------------------------------------------------------------------------
@@ -361,7 +485,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Convert a .anim file to a C++ header with pre-baked data."
     )
-    parser.add_argument("input", help="Path to the .anim file")
+    parser.add_argument(
+        "input",
+        nargs="?",
+        help="Path to the .anim file (not required with --manifest)",
+    )
     parser.add_argument(
         "--var",
         default=None,
@@ -372,12 +500,47 @@ def main() -> int:
         default=None,
         help="Output file path (default: stdout)",
     )
+    parser.add_argument(
+        "--manifest",
+        default=None,
+        help="Pack manifest JSON to convert in batch",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=None,
+        help="Output directory for batch header conversion",
+    )
     args = parser.parse_args()
 
-    # Read input
+    if args.manifest:
+        if not args.output_dir:
+            print("Error: --output-dir is required when using --manifest", file=sys.stderr)
+            return 1
+        manifest_path = Path(args.manifest)
+        if not manifest_path.exists():
+            print(f"Error: cannot open '{manifest_path}': file not found", file=sys.stderr)
+            return 1
+        try:
+            written = convert_pack_manifest(manifest_path, Path(args.output_dir))
+        except json.JSONDecodeError as exc:
+            print(f"Error: invalid JSON in '{manifest_path}': {exc}", file=sys.stderr)
+            return 1
+        except ValueError as exc:
+            print(f"Error: batch conversion failed: {exc}", file=sys.stderr)
+            return 1
+        except OSError as exc:
+            print(f"Error: batch conversion failed: {exc}", file=sys.stderr)
+            return 1
+        for path in written:
+            print(f"Written: {path}", file=sys.stderr)
+        return 0
+
+    if not args.input:
+        parser.print_help()
+        return 1
+
     try:
-        with open(args.input, "r", encoding="utf-8") as fh:
-            payload = json.load(fh)
+        cpp_source = convert_anim_file(Path(args.input), var_name=args.var)
     except OSError as exc:
         print(f"Error: cannot open '{args.input}': {exc}", file=sys.stderr)
         return 1
@@ -385,16 +548,6 @@ def main() -> int:
         print(f"Error: invalid JSON in '{args.input}': {exc}", file=sys.stderr)
         return 1
 
-    # Derive variable name
-    var_name = args.var
-    if not var_name:
-        stem = Path(args.input).stem  # e.g. "noctis" from "noctis.anim"
-        var_name = _ident(stem).upper()
-
-    # Generate
-    cpp_source = generate(payload, var_name)
-
-    # Write output
     if args.output:
         try:
             with open(args.output, "w", encoding="utf-8") as fh:

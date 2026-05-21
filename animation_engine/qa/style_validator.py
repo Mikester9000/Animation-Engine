@@ -78,7 +78,42 @@ class StyleValidator:
         if not isinstance(files, dict):
             errors.append("Manifest files must be an object")
             files = {}
-        actual = list(files.keys())
+
+        ordered_files_present = "ordered_files" in manifest
+        ordered_files = manifest.get("ordered_files")
+        if ordered_files_present:
+            if not isinstance(ordered_files, list):
+                errors.append("Manifest ordered_files must be a list")
+                ordered_files = []
+            actual = []
+            seen: set[str] = set()
+            duplicates: list[str] = []
+            reported_duplicates: set[str] = set()
+            for index, entry in enumerate(ordered_files):
+                if not isinstance(entry, dict):
+                    errors.append(f"Manifest ordered_files[{index}] entries must be objects")
+                    continue
+                motion = entry.get("motion_type")
+                if not isinstance(motion, str):
+                    errors.append(
+                        f"Manifest ordered_files[{index}] entries must have string motion_type"
+                    )
+                    continue
+                motion = motion.strip()
+                if not motion:
+                    errors.append(
+                        f"Manifest ordered_files[{index}] entries must have non-empty motion_type"
+                    )
+                    continue
+                actual.append(motion)
+                if motion in seen and motion not in reported_duplicates:
+                    duplicates.append(motion)
+                    reported_duplicates.add(motion)
+                seen.add(motion)
+            if duplicates:
+                errors.append(f"Duplicate clip ids: {', '.join(duplicates)}")
+        else:
+            actual = list(files.keys())
 
         expected_set = set(expected)
         actual_set = set(actual)
@@ -89,6 +124,12 @@ class StyleValidator:
             errors.append(f"Missing required clips: {', '.join(missing)}")
         if extra:
             errors.append(f"Unexpected clip ids: {', '.join(extra)}")
+
+        if ordered_files_present and actual and actual != expected:
+            errors.append(
+                "Clip order mismatch: expected "
+                f"{', '.join(expected)}; got {', '.join(actual)}"
+            )
 
         # Optional duration sanity checks.
         if clip_durations:

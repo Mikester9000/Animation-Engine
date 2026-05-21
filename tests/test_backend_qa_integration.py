@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from animation_engine.animation import AnimationClip
 from animation_engine.animation.channel import ChannelTarget
@@ -12,7 +13,12 @@ from animation_engine.cli import (
     _cmd_list_backends,
     _cmd_validate_pack,
 )
-from animation_engine.integration import AnimationPipeline, get_style_profile, list_style_profiles
+from animation_engine.integration import (
+    AnimationPipeline,
+    DEFAULT_STYLE_PROFILE_ID,
+    get_style_profile,
+    list_style_profiles,
+)
 from animation_engine.io import AnimExporter, AnimImporter
 from animation_engine.model import Model, Skeleton
 from animation_engine.qa import ClipValidator, LoopAnalyzer, SkeletonValidator, StyleValidator
@@ -45,6 +51,16 @@ def test_procedural_backend_generates_named_clip():
     clip = backend.generate_clip(_make_skeleton(), "walk", 1.5)
     assert clip.name == "walk"
     assert len(clip.channels) >= 1
+
+
+def test_pipeline_manifest_backend_name_uses_registry_id(tmp_path):
+    class DemoBackend(AnimationBackend):
+        def generate_clip(self, skeleton, motion_type, duration, **kwargs):
+            return AnimationClip(motion_type)
+
+    BackendRegistry.register("demo_registry", DemoBackend)
+    manifest = AnimationPipeline(backend="demo_registry").generate_all(tmp_path, _make_skeleton())
+    assert manifest["backend_name"] == "demo_registry"
 
 
 def test_procedural_backend_walk_and_run_keep_requested_duration():
@@ -93,7 +109,13 @@ def test_pipeline_generates_anim_files(tmp_path):
     assert manifest["reference_titles"] == list(profile.reference_titles)
     assert manifest["expected"] == len(profile.required_clips)
     assert manifest["generated"] == len(profile.required_clips)
+    assert manifest["backend_name"] == "procedural"
+    assert manifest["seed"] is None
+    assert manifest["generation_version"] == 1
     assert set(manifest["files"]) == {clip.motion_type for clip in profile.required_clips}
+    assert [entry["motion_type"] for entry in manifest["ordered_files"]] == [
+        clip.motion_type for clip in profile.required_clips
+    ]
     assert Path(manifest["manifest_path"]).exists()
     for path in manifest["files"].values():
         assert Path(path).exists()
@@ -111,6 +133,7 @@ def test_pipeline_generates_anim_files(tmp_path):
 def test_style_profiles_registry_exposes_expected_profiles():
     profiles = list_style_profiles()
     profile_ids = [p.profile_id for p in profiles]
+    assert DEFAULT_STYLE_PROFILE_ID == "ff10_ps2"
     assert "ff7_ps2" in profile_ids
     assert "ff8_ps2" in profile_ids
     assert "ff9_ps2" in profile_ids
@@ -144,6 +167,66 @@ def test_style_validator_handles_invalid_manifest_files_type():
     report = StyleValidator().validate_pack(manifest)
     assert not report.is_valid
     assert "Manifest files must be an object" in report.errors
+
+
+def test_style_validator_detects_wrong_clip_order_and_duplicates(monkeypatch):
+    fake_profile = SimpleNamespace(
+        profile_id="ff10_ps2",
+        label="fake",
+        visual_target="fake",
+        gameplay_target="fake",
+        reference_titles=("fake",),
+        required_clips=(
+            SimpleNamespace(motion_type="idle"),
+            SimpleNamespace(motion_type="walk"),
+            SimpleNamespace(motion_type="run"),
+        ),
+    )
+    monkeypatch.setattr(
+        "animation_engine.qa.style_validator.get_style_profile",
+        lambda profile_id="ff10_ps2": fake_profile,
+    )
+    manifest = {
+        "profile_id": "ff10_ps2",
+        "status": "ok",
+        "ordered_files": [
+            {"motion_type": "walk", "path": "/tmp/walk.anim"},
+            {"motion_type": "idle", "path": "/tmp/idle.anim"},
+            {"motion_type": "idle", "path": "/tmp/idle2.anim"},
+        ],
+        "required_clips": ["idle", "walk", "run"],
+    }
+    report = StyleValidator().validate_pack(manifest)
+    assert not report.is_valid
+    assert any("Duplicate clip ids" in err for err in report.errors)
+    assert any("Clip order mismatch" in err for err in report.errors)
+
+
+def test_style_validator_duplicate_clip_ids_are_deduplicated_in_error(monkeypatch):
+    fake_profile = SimpleNamespace(
+        profile_id="ff10_ps2",
+        label="fake",
+        visual_target="fake",
+        gameplay_target="fake",
+        reference_titles=("fake",),
+        required_clips=(SimpleNamespace(motion_type="idle"),),
+    )
+    monkeypatch.setattr(
+        "animation_engine.qa.style_validator.get_style_profile",
+        lambda profile_id="ff10_ps2": fake_profile,
+    )
+    manifest = {
+        "profile_id": "ff10_ps2",
+        "status": "ok",
+        "ordered_files": [
+            {"motion_type": "idle", "path": "/tmp/idle.anim"},
+            {"motion_type": "idle", "path": "/tmp/idle2.anim"},
+            {"motion_type": "idle", "path": "/tmp/idle3.anim"},
+        ],
+    }
+    report = StyleValidator().validate_pack(manifest)
+    duplicate_error = next(err for err in report.errors if err.startswith("Duplicate clip ids:"))
+    assert duplicate_error == "Duplicate clip ids: idle"
 
 
 def test_cli_parser_and_list_backends_command(capsys):
@@ -184,6 +267,53 @@ def test_cli_generate_pack_and_validate_pack_commands(tmp_path, capsys):
     assert _cmd_validate_pack(validate_args) == 0
     out = capsys.readouterr().out
     assert "Style report:" in out
+
+
+def test_cli_validate_pack_accepts_ordered_files_only_and_resolves_relative_paths(
+    tmp_path, monkeypatch
+):
+    fake_profile = SimpleNamespace(
+        profile_id="ff10_ps2",
+        label="fake",
+        visual_target="fake",
+        gameplay_target="fake",
+        reference_titles=("fake",),
+        required_clips=(SimpleNamespace(motion_type="idle", duration=1.0),),
+    )
+    monkeypatch.setattr(
+        "animation_engine.qa.style_validator.get_style_profile",
+        lambda profile_id="ff10_ps2": fake_profile,
+    )
+
+    model = Model("source")
+    model.skeleton = _make_skeleton()
+    clip = AnimationClip("idle", fps=30.0, loop=True)
+    clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+    clip.add_keyframe("root", ChannelTarget.TRANSLATION, 1.0, [0, 0, 0])
+    anim_path = tmp_path / "idle.anim"
+    AnimExporter().export(
+        model,
+        [clip],
+        metadata={"style_profile": "ff10_ps2"},
+        path=str(anim_path),
+    )
+
+    manifest_path = tmp_path / "pack_manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "status": "ok",
+                "profile_id": "ff10_ps2",
+                "ordered_files": [{"motion_type": "idle", "path": "idle.anim"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.chdir(tmp_path.parent)
+    parser = build_parser()
+    validate_args = parser.parse_args(["validate-pack", "--manifest", str(manifest_path)])
+    assert _cmd_validate_pack(validate_args) == 0
 
 
 def test_cli_generate_pack_manifest_out_has_updated_manifest_path(tmp_path):

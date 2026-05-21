@@ -168,3 +168,49 @@ For profile-based pack generation, treat the generated `pack_manifest.json` as
 the hand-off contract. It now records the selected profile, PS2-era visual
 target, modern gameplay target, reference titles, and the ordered clip inventory
 expected by downstream runtime/import tools.
+
+The manifest also includes `ordered_files`, `backend_name`, `seed`, and
+`generation_version` so release builds can reproduce and validate packs without
+guesswork.
+
+### Expected generated pack tree
+
+```text
+assets/hero_pack/
+├── attack.anim
+├── cast.anim
+├── defend.anim
+├── dodge.anim
+├── hit_react.anim
+├── idle.anim
+├── jump_land.anim
+├── jump_loop.anim
+├── jump_start.anim
+├── pack_manifest.json
+├── run.anim
+├── victory.anim
+└── walk.anim
+```
+
+The exact `.anim` filenames and order are defined by the selected style
+profile's `ordered_files` manifest entries. Downstream import or conversion
+tools should consume clips in that order instead of guessing from directory
+listing order.
+
+### Smoke test sequence
+
+```bash
+pip install -e '.[dev]'
+python -m pytest -q
+animation-engine generate-pack --skeleton-anim assets/hero_source.anim --output-dir assets/hero_pack --profile ff10_ps2
+animation-engine validate-pack --manifest assets/hero_pack/pack_manifest.json
+```
+
+Expected success conditions:
+
+- `pip install -e '.[dev]'` completes without dependency errors.
+- `python -m pytest -q` finishes green.
+- `generate-pack` prints `status: ok`, reports `generated` equal to `expected`,
+  and writes `assets/hero_pack/pack_manifest.json`.
+- `validate-pack` exits `0` and prints a `Style report: VALID` summary with no
+  blocking errors.

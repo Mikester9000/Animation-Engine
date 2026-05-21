@@ -40,7 +40,11 @@ The Animation Engine exports **`.anim` files** — JSON packages that contain:
 Generated profile packs also include `pack_manifest.json`, which is the
 downstream hand-off contract for `Mikester9000/GameRewritten`. It records the
 selected style profile, the PS2-era visual target, the modern gameplay target,
-the reference titles, and the ordered clip inventory.
+the reference titles, and the ordered clip inventory. The manifest also stores
+the backend name, seed, ordered file list, and generation version for reproducible
+pack validation.
+Older manifests may still use `backend`; `validate-pack` accepts that legacy key
+while new exports write `backend_name`.
 
 The C++ bridge provides:
 
@@ -65,7 +69,40 @@ animation-engine generate-pack \
 
 This generates `pack_manifest.json` plus one `.anim` file per required clip.
 Import/build tooling should validate the manifest first, then load or convert
-the listed clips in order.
+the listed clips in order. Run `animation-engine validate-pack --manifest
+<path/to/pack_manifest.json>` before any runtime import or header conversion.
+
+Expected pack layout:
+
+```text
+assets/hero_pack/
+├── idle.anim
+├── walk.anim
+├── run.anim
+├── attack.anim
+├── defend.anim
+├── cast.anim
+├── hit_react.anim
+├── dodge.anim
+├── jump_start.anim
+├── jump_loop.anim
+├── jump_land.anim
+├── victory.anim
+└── pack_manifest.json
+```
+
+Failure handling rules:
+
+1. If `generate-pack` exits non-zero or writes `status: failed`, stop and fix the
+   reported `failed` motion IDs before handing files to GameRewritten.
+2. If `validate-pack` exits non-zero, do not import or convert the pack; treat
+   the manifest as rejected until the validator returns success.
+3. If `pack_manifest.json` is missing, malformed, or its `ordered_files` entries
+   point at missing `.anim` files, stop the pipeline instead of falling back to
+   directory scans or guessed clip names.
+4. Runtime loading and pre-baked conversion should both consume clips in
+   `ordered_files` order so GameRewritten sees the same deterministic pack layout
+   that generation and QA validated.
 
 ```python
 from animation_engine.model import Model, Mesh, Vertex, Skeleton
@@ -146,6 +183,12 @@ For a generated pack, iterate the ordered file list from `pack_manifest.json`
 and convert each clip deterministically so release builds preserve the same
 PS2-era art-direction contract used during generation and validation.
 
+```bash
+python compat/anim_to_cpp_header.py \
+    --manifest assets/hero_pack/pack_manifest.json \
+    --output-dir path/to/Game-Engine/src/game/data/generated_headers
+```
+
 **Convert the file**
 
 ```bash
@@ -153,6 +196,10 @@ PS2-era art-direction contract used during generation and validation.
 python compat/anim_to_cpp_header.py assets/noctis.anim --var NOCTIS \
     --output path/to/Game-Engine/src/game/data/noctis_anim.hpp
 ```
+
+Treat manifest conversion failures as hard stops for release builds. If the
+manifest is invalid, a listed source `.anim` file is missing, or validation has
+not passed, do not ship partially generated headers.
 
 **C++ usage**
 

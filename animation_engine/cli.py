@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 
 def _cmd_validate_clip(args: argparse.Namespace) -> int:
@@ -93,6 +94,25 @@ def _cmd_list_backends(args: argparse.Namespace) -> int:
     return 0
 
 
+def _manifest_backend_name(manifest: dict[str, Any]) -> Any:
+    """Return the backend name from a pack manifest.
+
+    Parameters
+    ----------
+    manifest:
+        Parsed manifest JSON object.
+
+    Returns
+    -------
+    Any
+        `backend_name` when present, otherwise the legacy `backend` value.
+    """
+    backend_name = manifest.get("backend_name")
+    if backend_name is not None:
+        return backend_name
+    return manifest.get("backend")
+
+
 def _cmd_generate_pack(args: argparse.Namespace) -> int:
     """Generate a full profile pack from a source skeleton .anim."""
     from animation_engine.integration import AnimationPipeline
@@ -124,6 +144,8 @@ def _cmd_generate_pack(args: argparse.Namespace) -> int:
     print(f"  profile:   {manifest.get('profile_id')}")
     print(f"  status:    {manifest.get('status')}")
     print(f"  generated: {manifest.get('generated')}/{manifest.get('expected')}")
+    print(f"  backend:   {_manifest_backend_name(manifest)}")
+    print(f"  seed:      {manifest.get('seed')}")
     print(f"  manifest:  {manifest.get('manifest_path')}")
     if manifest.get("failed"):
         for motion, reason in sorted(manifest["failed"].items()):
@@ -145,8 +167,20 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
     with open(manifest_path, "r", encoding="utf-8") as fh:
         manifest = json.load(fh)
 
-    files = manifest.get("files", {})
-    if not isinstance(files, dict) or not files:
+    files = manifest.get("files")
+    if files is None:
+        files = {}
+    ordered_files_present = "ordered_files" in manifest
+    ordered_files = manifest.get("ordered_files")
+    if ordered_files is None:
+        ordered_files = []
+    if not isinstance(files, dict):
+        print("ERROR: Manifest files must be an object")
+        return 1
+    if ordered_files_present and not isinstance(ordered_files, list):
+        print("ERROR: Manifest ordered_files must be a list")
+        return 1
+    if not files and not ordered_files:
         print("ERROR: Manifest has no files to validate")
         return 1
 
@@ -160,8 +194,28 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
     loop_reports = {}
     profile_id = str(manifest.get("profile_id", "")).strip()
 
-    for motion, file_path in sorted(files.items()):
+    if ordered_files:
+        file_entries = []
+        for index, entry in enumerate(ordered_files):
+            if not isinstance(entry, dict):
+                print(f"ERROR: Manifest ordered_files[{index}] must be an object")
+                return 1
+            motion = str(entry.get("motion_type", "")).strip()
+            file_path = str(entry.get("path", "")).strip()
+            if not motion or not file_path:
+                print(
+                    f"ERROR: Manifest ordered_files[{index}] missing motion_type/path "
+                    f"(motion_type={motion!r}, path={file_path!r})"
+                )
+                return 1
+            file_entries.append((motion, file_path))
+    else:
+        file_entries = sorted(files.items())
+
+    for motion, file_path in file_entries:
         path = Path(file_path)
+        if not path.is_absolute():
+            path = manifest_path.parent / path
         if not path.exists():
             all_valid = False
             print(f"ERROR [{motion}]: file missing -> {path}")

@@ -8,6 +8,7 @@ compatible with GameRewritten engine.
 from animation_engine.integration.asset_pipeline import AnimationPipeline
 from animation_engine.integration.style_profiles import (
     ClipSpec,
+    DEFAULT_STYLE_PROFILE_ID,
     StyleProfile,
     get_style_profile,
     list_style_profiles,
@@ -16,6 +17,7 @@ from animation_engine.integration.style_profiles import (
 __all__ = [
     "AnimationPipeline",
     "ClipSpec",
+    "DEFAULT_STYLE_PROFILE_ID",
     "StyleProfile",
     "get_style_profile",
     "list_style_profiles",

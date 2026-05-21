@@ -37,6 +37,7 @@ class AnimationPipeline:
     ) -> None:
         from animation_engine.backend import BackendRegistry
 
+        self.backend_id = backend
         self.backend = BackendRegistry.get(backend, sample_rate=sample_rate, seed=seed)
         self.sample_rate = sample_rate
         self.profile_id = profile_id
@@ -73,6 +74,7 @@ class AnimationPipeline:
 
         generated: dict[str, str] = {}
         failed: dict[str, str] = {}
+        ordered_files: list[dict[str, Any]] = []
 
         exporter = AnimExporter()
 
@@ -107,6 +109,13 @@ class AnimationPipeline:
                     path=str(output_path),
                 )
                 generated[motion] = str(output_path)
+                ordered_files.append(
+                    {
+                        "motion_type": motion,
+                        "path": str(output_path),
+                        "duration": clip_spec.duration,
+                    }
+                )
             except (ValueError, RuntimeError, OSError, TypeError) as exc:
                 failed[motion] = str(exc)
 
@@ -119,11 +128,15 @@ class AnimationPipeline:
             "gameplay_target": profile.gameplay_target,
             "reference_titles": list(profile.reference_titles),
             "required_clips": [clip.motion_type for clip in profile.required_clips],
+            "ordered_files": ordered_files,
             "expected": len(profile.required_clips),
             "generated": len(generated),
             "files": generated,
             "failed": failed,
+            "backend_name": self.backend_id,
+            "seed": getattr(self.backend, "seed", None),
             "sample_rate": self.sample_rate,
+            "generation_version": 1,
             "manifest_path": str(manifest_path),
         }
         with open(manifest_path, "w", encoding="utf-8") as fh:
