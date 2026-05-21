@@ -1,15 +1,21 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from animation_engine.animation import AnimationClip
 from animation_engine.animation.channel import ChannelTarget
 from animation_engine.backend import AnimationBackend, BackendRegistry, ProceduralBackend
-from animation_engine.cli import build_parser, _cmd_list_backends
-from animation_engine.integration import AnimationPipeline
-from animation_engine.io import AnimImporter
-from animation_engine.model import Skeleton
-from animation_engine.qa import ClipValidator, LoopAnalyzer, SkeletonValidator
+from animation_engine.cli import (
+    build_parser,
+    _cmd_generate_pack,
+    _cmd_list_backends,
+    _cmd_validate_pack,
+)
+from animation_engine.integration import AnimationPipeline, get_style_profile, list_style_profiles
+from animation_engine.io import AnimExporter, AnimImporter
+from animation_engine.model import Model, Skeleton
+from animation_engine.qa import ClipValidator, LoopAnalyzer, SkeletonValidator, StyleValidator
 
 
 def _make_skeleton() -> Skeleton:
@@ -41,6 +47,14 @@ def test_procedural_backend_generates_named_clip():
     assert len(clip.channels) >= 1
 
 
+def test_procedural_backend_walk_and_run_keep_requested_duration():
+    backend = ProceduralBackend()
+    walk = backend.generate_clip(_make_skeleton(), "walk", 2.0, cadence_scale=1.08)
+    run = backend.generate_clip(_make_skeleton(), "run", 1.5, cadence_scale=1.08)
+    assert walk.duration == 2.0
+    assert run.duration == 1.5
+
+
 def test_clip_validator_and_loop_analyzer_reports():
     clip = AnimationClip("bad_clip")
     clip.add_keyframe("root", ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1.5])
@@ -69,15 +83,52 @@ def test_skeleton_validator_detects_dag_violation():
 
 
 def test_pipeline_generates_anim_files(tmp_path):
-    pipeline = AnimationPipeline()
+    profile = get_style_profile("ff10_ps2")
+    pipeline = AnimationPipeline(profile_id=profile.profile_id)
     manifest = pipeline.generate_all(tmp_path, _make_skeleton())
-    assert manifest["generated"] == 4
-    assert set(manifest["files"]) == {"idle", "walk", "run", "attack"}
+    assert manifest["status"] == "ok"
+    assert manifest["profile_id"] == profile.profile_id
+    assert manifest["expected"] == len(profile.required_clips)
+    assert manifest["generated"] == len(profile.required_clips)
+    assert set(manifest["files"]) == {clip.motion_type for clip in profile.required_clips}
+    assert Path(manifest["manifest_path"]).exists()
     for path in manifest["files"].values():
         assert Path(path).exists()
-        model, clips, _ = AnimImporter().import_file(path)
+        model, clips, _, metadata = AnimImporter().import_file(path, include_metadata=True)
         assert model.skeleton is not None
         assert len(clips) == 1
+        assert metadata is not None
+        assert metadata["style_profile"] == profile.profile_id
+
+
+def test_style_profiles_registry_exposes_expected_profiles():
+    profiles = list_style_profiles()
+    profile_ids = [p.profile_id for p in profiles]
+    assert "ff8_ps2" in profile_ids
+    assert "ff10_ps2" in profile_ids
+
+
+def test_style_validator_detects_missing_required_clips():
+    manifest = {
+        "profile_id": "ff10_ps2",
+        "status": "ok",
+        "files": {"idle": "/tmp/idle.anim"},
+    }
+    report = StyleValidator().validate_pack(manifest)
+    assert not report.is_valid
+    assert "walk" in report.missing_clips
+    assert any("Missing required clips" in err for err in report.errors)
+
+
+def test_style_validator_handles_invalid_manifest_files_type():
+    manifest = {
+        "profile_id": "ff10_ps2",
+        "status": "ok",
+        "files": [],
+    }
+    report = StyleValidator().validate_pack(manifest)
+    assert not report.is_valid
+    assert "Manifest files must be an object" in report.errors
 
 
 def test_cli_parser_and_list_backends_command(capsys):
@@ -89,3 +140,58 @@ def test_cli_parser_and_list_backends_command(capsys):
     out = capsys.readouterr().out
     assert exit_code == 0
     assert "procedural" in out
+
+
+def test_cli_generate_pack_and_validate_pack_commands(tmp_path, capsys):
+    source_anim = tmp_path / "source.anim"
+    model = Model("source")
+    model.skeleton = _make_skeleton()
+    AnimExporter().export(model, [], path=str(source_anim))
+
+    output_dir = tmp_path / "pack"
+    parser = build_parser()
+    generate_args = parser.parse_args(
+        [
+            "generate-pack",
+            "--skeleton-anim",
+            str(source_anim),
+            "--output-dir",
+            str(output_dir),
+            "--profile",
+            "ff10_ps2",
+        ]
+    )
+    assert _cmd_generate_pack(generate_args) == 0
+    manifest_path = output_dir / "pack_manifest.json"
+    assert manifest_path.exists()
+
+    validate_args = parser.parse_args(["validate-pack", "--manifest", str(manifest_path)])
+    assert _cmd_validate_pack(validate_args) == 0
+    out = capsys.readouterr().out
+    assert "Style report:" in out
+
+
+def test_cli_generate_pack_manifest_out_has_updated_manifest_path(tmp_path):
+    source_anim = tmp_path / "source.anim"
+    model = Model("source")
+    model.skeleton = _make_skeleton()
+    AnimExporter().export(model, [], path=str(source_anim))
+
+    output_dir = tmp_path / "pack"
+    external_manifest = tmp_path / "custom_manifest.json"
+    parser = build_parser()
+    generate_args = parser.parse_args(
+        [
+            "generate-pack",
+            "--skeleton-anim",
+            str(source_anim),
+            "--output-dir",
+            str(output_dir),
+            "--manifest-out",
+            str(external_manifest),
+        ]
+    )
+    assert _cmd_generate_pack(generate_args) == 0
+    with open(external_manifest, "r", encoding="utf-8") as fh:
+        copied_manifest = json.load(fh)
+    assert copied_manifest["manifest_path"] == str(external_manifest)

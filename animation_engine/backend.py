@@ -13,6 +13,7 @@ Future backends could wrap:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import math
 from typing import Any
 
 __all__ = ["AnimationBackend", "ProceduralBackend", "BackendRegistry"]
@@ -71,7 +72,23 @@ class AnimationBackend(ABC):
 
     def supported_motion_types(self) -> tuple[str, ...]:
         """Return supported motion types."""
-        return ("idle", "walk", "run", "attack")
+        return (
+            "idle",
+            "walk",
+            "run",
+            "attack",
+            "defend",
+            "cast",
+            "hit_react",
+            "dodge",
+            "jump_start",
+            "jump_loop",
+            "jump_land",
+            "victory",
+            "turn_left",
+            "turn_right",
+            "crouch",
+        )
 
 
 class ProceduralBackend(AnimationBackend):
@@ -97,19 +114,33 @@ class ProceduralBackend(AnimationBackend):
         from animation_engine.animation import AnimationClip
         from animation_engine.animation.channel import ChannelTarget
 
+        def _unit_axis_quat(axis_value: float, axis: str) -> list[float]:
+            """Return a unit quaternion in engine [x, y, z, w] storage order."""
+            # Engine convention is [x, y, z, w] (same as Quaternion.to_list/from_list).
+            value = max(min(axis_value, 0.999999), -0.999999)
+            w = math.sqrt(max(0.0, 1.0 - (value * value)))
+            if axis == "x":
+                return [value, 0.0, 0.0, w]
+            if axis == "z":
+                return [0.0, 0.0, value, w]
+            return [0.0, value, 0.0, w]
+
         clip = AnimationClip(motion_type, fps=self.sample_rate, loop=True)
+        # Clamp to avoid divide-by-zero / near-zero step durations.
+        cadence_scale = max(float(kwargs.get("cadence_scale", 1.0)), 1e-3)
+        amplitude_scale = float(kwargs.get("amplitude_scale", 1.0))
 
         # Generate simple procedural keyframes based on motion type
         if motion_type == "idle":
             # Slight breathing motion on spine
             if skeleton and len(skeleton.bones) > 1:
                 spine_name = skeleton.bones[1].name
-                breathe_rotation = [0, 0.02, 0, 0.9998]
+                breathe_rotation = _unit_axis_quat(0.02 * amplitude_scale, axis="y")
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
                 clip.add_keyframe(
                     spine_name,
                     ChannelTarget.ROTATION,
-                    duration / 2,
+                    duration / (2 * cadence_scale),
                     breathe_rotation,
                 )
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
@@ -118,28 +149,175 @@ class ProceduralBackend(AnimationBackend):
             # Simple walk cycle on root
             if skeleton and len(skeleton.bones) > 0:
                 root_name = skeleton.bones[0].name
-                step_duration = duration / 4  # 4 steps in duration
+                step_duration = duration / (4 * cadence_scale)
                 for i in range(5):
                     t = i * step_duration
-                    y_offset = 0.1 if i % 2 == 0 else -0.1
+                    if t >= duration:
+                        break
+                    y_offset = (0.1 if i % 2 == 0 else -0.1) * amplitude_scale
                     clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0, y_offset, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, 0.1 * amplitude_scale, 0],
+                )
 
         elif motion_type == "run":
             # Faster cycle
             if skeleton and len(skeleton.bones) > 0:
                 root_name = skeleton.bones[0].name
-                step_duration = duration / 6  # 6 steps in duration
+                step_duration = duration / (6 * cadence_scale)
                 for i in range(7):
                     t = i * step_duration
-                    y_offset = 0.15 if i % 2 == 0 else -0.15
+                    if t >= duration:
+                        break
+                    y_offset = (0.15 if i % 2 == 0 else -0.15) * amplitude_scale
                     clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0, y_offset, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, 0.15 * amplitude_scale, 0],
+                )
 
         elif motion_type == "attack":
             if skeleton and len(skeleton.bones) > 0:
                 root_name = skeleton.bones[0].name
                 clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.4, [0, 0, 0.25])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.4,
+                    [0, 0, 0.25 * amplitude_scale],
+                )
                 clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "defend":
+            if skeleton and len(skeleton.bones) > 1:
+                spine_name = skeleton.bones[1].name
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(
+                    spine_name,
+                    ChannelTarget.ROTATION,
+                    duration * 0.35,
+                    _unit_axis_quat(0.03 * amplitude_scale, axis="x"),
+                )
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+
+        elif motion_type == "cast":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.5,
+                    [0, 0.05 * amplitude_scale, -0.08 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "hit_react":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.2,
+                    [0, 0, -0.12 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "dodge":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.3,
+                    [0.2 * amplitude_scale, 0, 0],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "jump_start":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, 0.25 * amplitude_scale, 0.08 * amplitude_scale],
+                )
+
+        elif motion_type == "jump_loop":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                peak = 0.3 * amplitude_scale
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, peak, 0])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.5, [0, peak, 0])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, peak, 0])
+
+        elif motion_type == "jump_land":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    0.0,
+                    [0, 0.2 * amplitude_scale, 0],
+                )
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.4,
+                    [0, -0.08 * amplitude_scale, 0],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "victory":
+            if skeleton and len(skeleton.bones) > 1:
+                spine_name = skeleton.bones[1].name
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(
+                    spine_name,
+                    ChannelTarget.ROTATION,
+                    duration * 0.5,
+                    _unit_axis_quat(0.08 * amplitude_scale, axis="y"),
+                )
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+
+        elif motion_type in {"turn_left", "turn_right"}:
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                direction = 1.0 if motion_type == "turn_left" else -1.0
+                clip.add_keyframe(root_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.ROTATION,
+                    duration,
+                    _unit_axis_quat(direction * 0.15 * amplitude_scale, axis="y"),
+                )
+
+        elif motion_type == "crouch":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.5,
+                    [0, -0.12 * amplitude_scale, 0],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        # keep deterministic fallback for unknown motion identifiers
+        if not clip.channels and skeleton and len(skeleton.bones) > 0:
+            root_name = skeleton.bones[0].name
+            clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+            clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
 
         return clip
 

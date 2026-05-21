@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 from ..model.model import Model
 from ..animation.clip import AnimationClip
@@ -51,6 +51,7 @@ class AnimExporter:
         model: Model,
         clips: List[AnimationClip] = None,
         morph_tracks: List[MorphTrack] = None,
+        metadata: Optional[dict[str, Any]] = None,
         path: str = "output.anim",
         indent: int = 2,
     ) -> str:
@@ -62,6 +63,8 @@ class AnimExporter:
         model       : The Model to export.
         clips       : Animation clips to bundle (may be empty).
         morph_tracks: Morph-target weight tracks (may be empty).
+        metadata    : Optional JSON-serializable metadata object stored under
+                      top-level ``metadata`` in the exported .anim payload.
         path        : Output file path (must end in .anim by convention).
         indent      : JSON pretty-print indentation level (0 = compact).
 
@@ -69,7 +72,7 @@ class AnimExporter:
         -------
         Absolute path of the written file.
         """
-        payload = self._build_payload(model, clips or [], morph_tracks or [])
+        payload = self._build_payload(model, clips or [], morph_tracks or [], metadata)
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True) \
             if os.path.dirname(path) else None
         with open(path, "w", encoding="utf-8") as fh:
@@ -81,10 +84,11 @@ class AnimExporter:
         model: Model,
         clips: List[AnimationClip] = None,
         morph_tracks: List[MorphTrack] = None,
+        metadata: Optional[dict[str, Any]] = None,
         indent: int = 2,
     ) -> str:
         """Return the serialised payload as a JSON string (no file written)."""
-        payload = self._build_payload(model, clips or [], morph_tracks or [])
+        payload = self._build_payload(model, clips or [], morph_tracks or [], metadata)
         return json.dumps(payload, indent=indent if indent else None)
 
     @staticmethod
@@ -92,14 +96,18 @@ class AnimExporter:
         model: Model,
         clips: List[AnimationClip],
         morph_tracks: List[MorphTrack],
+        metadata: Optional[dict[str, Any]] = None,
     ) -> dict:
-        return {
+        payload = {
             "format": FORMAT_NAME,
             "version": FORMAT_VERSION,
             "model": model.to_dict(),
             "clips": [c.to_dict() for c in clips],
             "morph_tracks": [mt.to_dict() for mt in morph_tracks],
         }
+        if metadata is not None:
+            payload["metadata"] = metadata
+        return payload
 
 
 class AnimImporter:
@@ -113,30 +121,50 @@ class AnimImporter:
     """
 
     def import_file(
-        self, path: str
-    ) -> Tuple[Model, List[AnimationClip], List[MorphTrack]]:
+        self,
+        path: str,
+        include_metadata: bool = False,
+    ) -> (
+        Tuple[Model, List[AnimationClip], List[MorphTrack]]
+        | Tuple[Model, List[AnimationClip], List[MorphTrack], Optional[dict[str, Any]]]
+    ):
         """
         Read and deserialise *path*.
 
         Returns
         -------
-        (model, clips, morph_tracks) tuple.
+        If ``include_metadata`` is False:
+            (model, clips, morph_tracks)
+        If ``include_metadata`` is True:
+            (model, clips, morph_tracks, metadata), where metadata is either
+            the top-level ``metadata`` object or ``None`` when not present.
         """
         with open(path, "r", encoding="utf-8") as fh:
             payload = json.load(fh)
-        return self._parse_payload(payload)
+        model, clips, morph_tracks, metadata = self._parse_payload(payload)
+        if include_metadata:
+            return model, clips, morph_tracks, metadata
+        return model, clips, morph_tracks
 
     def import_string(
-        self, json_string: str
-    ) -> Tuple[Model, List[AnimationClip], List[MorphTrack]]:
+        self,
+        json_string: str,
+        include_metadata: bool = False,
+    ) -> (
+        Tuple[Model, List[AnimationClip], List[MorphTrack]]
+        | Tuple[Model, List[AnimationClip], List[MorphTrack], Optional[dict[str, Any]]]
+    ):
         """Deserialise from a JSON string (no file I/O)."""
         payload = json.loads(json_string)
-        return self._parse_payload(payload)
+        model, clips, morph_tracks, metadata = self._parse_payload(payload)
+        if include_metadata:
+            return model, clips, morph_tracks, metadata
+        return model, clips, morph_tracks
 
     @staticmethod
     def _parse_payload(
         payload: dict,
-    ) -> Tuple[Model, List[AnimationClip], List[MorphTrack]]:
+    ) -> Tuple[Model, List[AnimationClip], List[MorphTrack], Optional[dict[str, Any]]]:
         # Validate header
         fmt = payload.get("format", "")
         if fmt != FORMAT_NAME:
@@ -155,4 +183,8 @@ class AnimImporter:
         morph_tracks = [
             MorphTrack.from_dict(mt) for mt in payload.get("morph_tracks", [])
         ]
-        return model, clips, morph_tracks
+        metadata = payload.get("metadata")
+        parsed_metadata: Optional[dict[str, Any]] = None
+        if isinstance(metadata, dict):
+            parsed_metadata = metadata
+        return model, clips, morph_tracks, parsed_metadata

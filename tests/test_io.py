@@ -140,6 +140,30 @@ class TestAnimFormat:
         assert tracks2[0].morph_name == "smile"
         assert tracks2[0].evaluate(0.5) == pytest.approx(1.0)
 
+    def test_metadata_roundtrip_when_requested(self):
+        model = _make_model()
+        clip = _make_clip()
+        metadata = {
+            "style_profile": "ff10_ps2",
+            "motion_type": "run",
+            "sample_rate": 30.0,
+        }
+        exporter = AnimExporter()
+        s = exporter.export_string(model, [clip], metadata=metadata)
+        importer = AnimImporter()
+        _, clips2, _, imported_metadata = importer.import_string(s, include_metadata=True)
+        assert len(clips2) == 1
+        assert imported_metadata == metadata
+
+    def test_metadata_defaults_to_none_for_legacy_payload(self):
+        model = _make_model()
+        clip = _make_clip()
+        exporter = AnimExporter()
+        s = exporter.export_string(model, [clip])
+        importer = AnimImporter()
+        _, _, _, metadata = importer.import_string(s, include_metadata=True)
+        assert metadata is None
+
     def test_wrong_format_raises(self):
         bad_json = json.dumps({"format": "SomeOtherEngine", "version": "1.0",
                                "model": {}, "clips": []})
