@@ -31,9 +31,16 @@ The Animation Engine exports **`.anim` files** — JSON packages that contain:
 │       └── bones [name, parent_index, local_transform, inverse_bind]
 ├── clips
 │   └── [] { name, fps, loop, channels [ {bone_name, target, keyframes} ] }
-└── morph_tracks
-    └── [] { morph_name, keyframes }
+├── morph_tracks
+│   └── [] { morph_name, keyframes }
+└── metadata
+    └── style_profile, visual_target, gameplay_target, reference_titles, ...
 ```
+
+Generated profile packs also include `pack_manifest.json`, which is the
+downstream hand-off contract for `Mikester9000/GameRewritten`. It records the
+selected style profile, the PS2-era visual target, the modern gameplay target,
+the reference titles, and the ordered clip inventory.
 
 The C++ bridge provides:
 
@@ -45,6 +52,20 @@ The C++ bridge provides:
 ---
 
 ## Step 1 — Export from Animation Engine
+
+Prefer the profile-based pack flow for production content so every exported clip
+inherits the same visual/gameplay direction metadata:
+
+```bash
+animation-engine generate-pack \
+    --skeleton-anim assets/hero_source.anim \
+    --output-dir assets/hero_pack \
+    --profile ff10_ps2
+```
+
+This generates `pack_manifest.json` plus one `.anim` file per required clip.
+Import/build tooling should validate the manifest first, then load or convert
+the listed clips in order.
 
 ```python
 from animation_engine.model import Model, Mesh, Vertex, Skeleton
@@ -94,7 +115,8 @@ RegisterAnimationComponents(world);
 auto& animSys = SetupAnimationSystem(world);
 animSys.SetWorld(world);
 
-// Load the .anim file once and share the package
+// Load the .anim file once and share the package.
+// For generated packs, resolve the selected clip path from pack_manifest.json.
 AE_AnimPackage noctisAnim = AnimLoader::Load("assets/noctis.anim");
 
 // ── Per-entity setup ──────────────────────────────────────────────────────
@@ -119,6 +141,10 @@ world.Update(deltaTime);   // drives AnimationSystem automatically
 Convert the `.anim` file into a C++ header **at build time**.  The animation
 data is compiled directly into the executable — no file I/O at runtime, no
 JSON parsing overhead.
+
+For a generated pack, iterate the ordered file list from `pack_manifest.json`
+and convert each clip deterministically so release builds preserve the same
+PS2-era art-direction contract used during generation and validation.
 
 **Convert the file**
 
@@ -212,6 +238,10 @@ The C++ bridge reads all fields defined in `Animation Engine 1.0`:
 | `clips[].channels[].keyframes[].interp` | `AE_Keyframe.interp` | STEP/LINEAR/CUBIC |
 | `morph_tracks[].morph_name` | `AE_MorphTrack.morphName` | |
 | `morph_tracks[].keyframes` | `AE_MorphTrack.keyframes` | |
+| `metadata.style_profile` | external pack selection | Profile ID used during generation |
+| `metadata.visual_target` | external art-direction check | PS2-era visual target string |
+| `metadata.gameplay_target` | external gameplay check | Modern gameplay support string |
+| `metadata.reference_titles[]` | external review/import check | Final Fantasy art-direction references |
 
 ---
 

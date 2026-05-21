@@ -88,6 +88,9 @@ def test_pipeline_generates_anim_files(tmp_path):
     manifest = pipeline.generate_all(tmp_path, _make_skeleton())
     assert manifest["status"] == "ok"
     assert manifest["profile_id"] == profile.profile_id
+    assert manifest["visual_target"] == profile.visual_target
+    assert manifest["gameplay_target"] == profile.gameplay_target
+    assert manifest["reference_titles"] == list(profile.reference_titles)
     assert manifest["expected"] == len(profile.required_clips)
     assert manifest["generated"] == len(profile.required_clips)
     assert set(manifest["files"]) == {clip.motion_type for clip in profile.required_clips}
@@ -99,13 +102,25 @@ def test_pipeline_generates_anim_files(tmp_path):
         assert len(clips) == 1
         assert metadata is not None
         assert metadata["style_profile"] == profile.profile_id
+        assert metadata["style_profile_label"] == profile.label
+        assert metadata["visual_target"] == profile.visual_target
+        assert metadata["gameplay_target"] == profile.gameplay_target
+        assert metadata["reference_titles"] == list(profile.reference_titles)
 
 
 def test_style_profiles_registry_exposes_expected_profiles():
     profiles = list_style_profiles()
     profile_ids = [p.profile_id for p in profiles]
+    assert "ff7_ps2" in profile_ids
     assert "ff8_ps2" in profile_ids
+    assert "ff9_ps2" in profile_ids
     assert "ff10_ps2" in profile_ids
+    assert "ff12_ps2" in profile_ids
+
+
+def test_style_profiles_registry_supports_legacy_ff7_alias():
+    profile = get_style_profile("ff7_psx")
+    assert profile.profile_id == "ff7_ps2"
 
 
 def test_style_validator_detects_missing_required_clips():
