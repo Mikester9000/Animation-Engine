@@ -12,7 +12,14 @@ from typing import Any
 
 from animation_engine.integration.style_profiles import DEFAULT_STYLE_PROFILE_ID
 
-__all__ = ["AnimationPipeline"]
+__all__ = [
+    "AnimationPipeline",
+    "PIPELINE_DEFAULT_BACKEND",
+    "PIPELINE_DEFAULT_SAMPLE_RATE",
+    "PIPELINE_DEFAULT_SEED",
+    "PIPELINE_DEFAULT_PROFILE_ID",
+    "PIPELINE_GENERATION_VERSION",
+]
 
 # ---------------------------------------------------------------------------
 # Pinned generation defaults — edit here to change the entire pipeline's
