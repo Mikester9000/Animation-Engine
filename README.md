@@ -168,3 +168,15 @@ For profile-based pack generation, treat the generated `pack_manifest.json` as
 the hand-off contract. It now records the selected profile, PS2-era visual
 target, modern gameplay target, reference titles, and the ordered clip inventory
 expected by downstream runtime/import tools.
+
+The manifest also includes `ordered_files`, `backend_name`, `seed`, and
+`generation_version` so release builds can reproduce and validate packs without
+guesswork.
+
+### Smoke test sequence
+
+```bash
+python -m pytest -q
+animation-engine generate-pack --skeleton-anim assets/hero_source.anim --output-dir assets/hero_pack --profile ff10_ps2
+animation-engine validate-pack --manifest assets/hero_pack/pack_manifest.json
+```

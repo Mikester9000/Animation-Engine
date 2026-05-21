@@ -40,7 +40,11 @@ The Animation Engine exports **`.anim` files** — JSON packages that contain:
 Generated profile packs also include `pack_manifest.json`, which is the
 downstream hand-off contract for `Mikester9000/GameRewritten`. It records the
 selected style profile, the PS2-era visual target, the modern gameplay target,
-the reference titles, and the ordered clip inventory.
+the reference titles, and the ordered clip inventory. The manifest also stores
+the backend name, seed, ordered file list, and generation version for reproducible
+pack validation.
+Older manifests may still use `backend`; `validate-pack` accepts that legacy key
+while new exports write `backend_name`.
 
 The C++ bridge provides:
 
@@ -65,7 +69,8 @@ animation-engine generate-pack \
 
 This generates `pack_manifest.json` plus one `.anim` file per required clip.
 Import/build tooling should validate the manifest first, then load or convert
-the listed clips in order.
+the listed clips in order. Run `animation-engine validate-pack --manifest
+<path/to/pack_manifest.json>` before any runtime import or header conversion.
 
 ```python
 from animation_engine.model import Model, Mesh, Vertex, Skeleton

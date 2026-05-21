@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from animation_engine.animation import AnimationClip
 from animation_engine.animation.channel import ChannelTarget
@@ -93,7 +94,13 @@ def test_pipeline_generates_anim_files(tmp_path):
     assert manifest["reference_titles"] == list(profile.reference_titles)
     assert manifest["expected"] == len(profile.required_clips)
     assert manifest["generated"] == len(profile.required_clips)
+    assert manifest["backend_name"] == "procedural"
+    assert manifest["seed"] is None
+    assert manifest["generation_version"] == 1
     assert set(manifest["files"]) == {clip.motion_type for clip in profile.required_clips}
+    assert [entry["motion_type"] for entry in manifest["ordered_files"]] == [
+        clip.motion_type for clip in profile.required_clips
+    ]
     assert Path(manifest["manifest_path"]).exists()
     for path in manifest["files"].values():
         assert Path(path).exists()
@@ -144,6 +151,39 @@ def test_style_validator_handles_invalid_manifest_files_type():
     report = StyleValidator().validate_pack(manifest)
     assert not report.is_valid
     assert "Manifest files must be an object" in report.errors
+
+
+def test_style_validator_detects_wrong_clip_order_and_duplicates(monkeypatch):
+    fake_profile = SimpleNamespace(
+        profile_id="ff10_ps2",
+        label="fake",
+        visual_target="fake",
+        gameplay_target="fake",
+        reference_titles=("fake",),
+        required_clips=(
+            SimpleNamespace(motion_type="idle"),
+            SimpleNamespace(motion_type="walk"),
+            SimpleNamespace(motion_type="run"),
+        ),
+    )
+    monkeypatch.setattr(
+        "animation_engine.qa.style_validator.get_style_profile",
+        lambda profile_id="ff10_ps2": fake_profile,
+    )
+    manifest = {
+        "profile_id": "ff10_ps2",
+        "status": "ok",
+        "ordered_files": [
+            {"motion_type": "walk", "path": "/tmp/walk.anim"},
+            {"motion_type": "idle", "path": "/tmp/idle.anim"},
+            {"motion_type": "idle", "path": "/tmp/idle2.anim"},
+        ],
+        "required_clips": ["idle", "walk", "run"],
+    }
+    report = StyleValidator().validate_pack(manifest)
+    assert not report.is_valid
+    assert any("Duplicate clip ids" in err for err in report.errors)
+    assert any("Clip order mismatch" in err for err in report.errors)
 
 
 def test_cli_parser_and_list_backends_command(capsys):

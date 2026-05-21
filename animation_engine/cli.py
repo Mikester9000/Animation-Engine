@@ -124,6 +124,8 @@ def _cmd_generate_pack(args: argparse.Namespace) -> int:
     print(f"  profile:   {manifest.get('profile_id')}")
     print(f"  status:    {manifest.get('status')}")
     print(f"  generated: {manifest.get('generated')}/{manifest.get('expected')}")
+    print(f"  backend:   {manifest.get('backend_name', manifest.get('backend'))}")
+    print(f"  seed:      {manifest.get('seed')}")
     print(f"  manifest:  {manifest.get('manifest_path')}")
     if manifest.get("failed"):
         for motion, reason in sorted(manifest["failed"].items()):
@@ -146,8 +148,12 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
         manifest = json.load(fh)
 
     files = manifest.get("files", {})
+    ordered_files = manifest.get("ordered_files", [])
     if not isinstance(files, dict) or not files:
         print("ERROR: Manifest has no files to validate")
+        return 1
+    if ordered_files and not isinstance(ordered_files, list):
+        print("ERROR: Manifest ordered_files must be a list")
         return 1
 
     clip_validator = ClipValidator()
@@ -160,7 +166,25 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
     loop_reports = {}
     profile_id = str(manifest.get("profile_id", "")).strip()
 
-    for motion, file_path in sorted(files.items()):
+    if ordered_files:
+        file_entries = []
+        for index, entry in enumerate(ordered_files):
+            if not isinstance(entry, dict):
+                print(f"ERROR: Manifest ordered_files[{index}] must be an object")
+                return 1
+            motion = str(entry.get("motion_type", "")).strip()
+            file_path = str(entry.get("path", "")).strip()
+            if not motion or not file_path:
+                print(
+                    f"ERROR: Manifest ordered_files[{index}] missing motion_type/path "
+                    f"(motion_type={motion!r}, path={file_path!r})"
+                )
+                return 1
+            file_entries.append((motion, file_path))
+    else:
+        file_entries = sorted(files.items())
+
+    for motion, file_path in file_entries:
         path = Path(file_path)
         if not path.exists():
             all_valid = False
