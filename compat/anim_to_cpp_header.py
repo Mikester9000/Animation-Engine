@@ -18,6 +18,11 @@ Usage
     # With a custom C++ namespace identifier:
     python compat/anim_to_cpp_header.py assets/noctis.anim --var NOCTIS
 
+    # Batch convert a generated pack manifest into one header per clip:
+    python compat/anim_to_cpp_header.py \
+        --manifest assets/hero_pack/pack_manifest.json \
+        --output-dir path/to/Game-Engine/src/game/data/generated_headers
+
 Then in your C++ Game Engine source::
 
     #include "compat/GameEngineCompat.hpp"
@@ -44,7 +49,9 @@ Two integration strategies exist:
 2. **Pre-baked header** (this script): the .anim data is compiled directly
    into the executable.  Pros: zero runtime I/O, zero JSON parsing overhead,
    no asset file required at runtime; Cons: the game must be recompiled when
-   animations change.  Ideal for small student projects.
+   animations change.  Ideal for small student projects.  For generated packs,
+   use ``--manifest`` so headers are emitted in the same deterministic order
+   recorded by ``pack_manifest.json``.
 """
 
 from __future__ import annotations
