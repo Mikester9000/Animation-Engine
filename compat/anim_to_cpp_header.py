@@ -130,6 +130,12 @@ def _manifest_entries(manifest: dict, base_dir: Path) -> list[tuple[str, Path]]:
     -------
     list[tuple[str, Path]]
         Motion type and resolved animation file path pairs.
+
+    Raises
+    ------
+    ValueError
+        If ``ordered_files`` is present but is not a list, contains malformed
+        entries, or contains no usable entries.
     """
     ordered_files_present = "ordered_files" in manifest
     ordered_files = manifest.get("ordered_files")

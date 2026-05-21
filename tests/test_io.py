@@ -16,8 +16,7 @@ from animation_engine.animation import AnimationClip, MorphTrack
 from animation_engine.animation.channel import ChannelTarget
 from animation_engine.animation.keyframe import KeyframeType
 from animation_engine.io import AnimExporter, AnimImporter, GltfExporter, GltfImporter
-from compat import anim_to_cpp_header
-from compat.anim_to_cpp_header import convert_pack_manifest
+from compat.anim_to_cpp_header import convert_pack_manifest, main as anim_to_cpp_header_main
 
 
 # ---------------------------------------------------------------------------
@@ -245,7 +244,7 @@ class TestAnimFormat:
                 str(output_dir),
             ],
         )
-        assert anim_to_cpp_header.main() == 1
+        assert anim_to_cpp_header_main() == 1
         assert "Error: invalid JSON" in capsys.readouterr().err
 
 

@@ -88,6 +88,7 @@ class StyleValidator:
             actual = []
             seen: set[str] = set()
             duplicates: list[str] = []
+            reported_duplicates: set[str] = set()
             for index, entry in enumerate(ordered_files):
                 if not isinstance(entry, dict):
                     errors.append(f"Manifest ordered_files[{index}] entries must be objects")
@@ -105,11 +106,12 @@ class StyleValidator:
                     )
                     continue
                 actual.append(motion)
-                if motion in seen:
+                if motion in seen and motion not in reported_duplicates:
                     duplicates.append(motion)
+                    reported_duplicates.add(motion)
                 seen.add(motion)
             if duplicates:
-                errors.append(f"Duplicate clip ids: {', '.join(sorted(set(duplicates)))}")
+                errors.append(f"Duplicate clip ids: {', '.join(duplicates)}")
         else:
             actual = list(files.keys())
 
