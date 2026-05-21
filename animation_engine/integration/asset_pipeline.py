@@ -37,6 +37,7 @@ class AnimationPipeline:
     ) -> None:
         from animation_engine.backend import BackendRegistry
 
+        self.backend_id = backend
         self.backend = BackendRegistry.get(backend, sample_rate=sample_rate, seed=seed)
         self.sample_rate = sample_rate
         self.profile_id = profile_id
@@ -132,7 +133,7 @@ class AnimationPipeline:
             "generated": len(generated),
             "files": generated,
             "failed": failed,
-            "backend_name": self.backend.name,
+            "backend_name": self.backend_id,
             "seed": getattr(self.backend, "seed", None),
             "sample_rate": self.sample_rate,
             "generation_version": 1,

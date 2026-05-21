@@ -16,6 +16,7 @@ from animation_engine.animation import AnimationClip, MorphTrack
 from animation_engine.animation.channel import ChannelTarget
 from animation_engine.animation.keyframe import KeyframeType
 from animation_engine.io import AnimExporter, AnimImporter, GltfExporter, GltfImporter
+from compat import anim_to_cpp_header
 from compat.anim_to_cpp_header import convert_pack_manifest
 
 
@@ -208,6 +209,44 @@ class TestAnimFormat:
         written = convert_pack_manifest(manifest_path, output_dir)
         assert [path.name for path in written] == ["idle.hpp", "run.hpp"]
         assert all(path.exists() for path in written)
+
+    def test_pack_manifest_ordered_files_must_not_be_empty_when_present(self, tmp_path):
+        model = _make_model()
+        exporter = AnimExporter()
+        idle_path = tmp_path / "idle.anim"
+        exporter.export(model, [_make_clip()], path=str(idle_path))
+
+        manifest_path = tmp_path / "pack_manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "ordered_files": [],
+                    "files": {"idle": str(idle_path)},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValueError, match="ordered_files must contain at least one entry"):
+            convert_pack_manifest(manifest_path, tmp_path / "headers")
+
+    def test_batch_manifest_cli_reports_invalid_json(self, tmp_path, monkeypatch, capsys):
+        manifest_path = tmp_path / "pack_manifest.json"
+        manifest_path.write_text("{", encoding="utf-8")
+        output_dir = tmp_path / "headers"
+
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "anim_to_cpp_header.py",
+                "--manifest",
+                str(manifest_path),
+                "--output-dir",
+                str(output_dir),
+            ],
+        )
+        assert anim_to_cpp_header.main() == 1
+        assert "Error: invalid JSON" in capsys.readouterr().err
 
 
 # ---------------------------------------------------------------------------

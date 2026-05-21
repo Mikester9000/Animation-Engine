@@ -131,21 +131,26 @@ def _manifest_entries(manifest: dict, base_dir: Path) -> list[tuple[str, Path]]:
     list[tuple[str, Path]]
         Motion type and resolved animation file path pairs.
     """
+    ordered_files_present = "ordered_files" in manifest
     ordered_files = manifest.get("ordered_files")
     entries: list[tuple[str, Path]] = []
-    if isinstance(ordered_files, list):
+    if ordered_files_present:
+        if not isinstance(ordered_files, list):
+            raise ValueError("Manifest ordered_files must be a list")
         for entry in ordered_files:
             if not isinstance(entry, dict):
-                continue
+                raise ValueError("Manifest ordered_files entries must be objects")
             motion = str(entry.get("motion_type", "")).strip()
             file_path = str(entry.get("path", "")).strip()
-            if motion and file_path:
-                anim_path = Path(file_path)
-                if not anim_path.is_absolute():
-                    anim_path = base_dir / anim_path
-                entries.append((motion, anim_path))
-        if entries:
-            return entries
+            if not motion or not file_path:
+                raise ValueError("Manifest ordered_files entries must include motion_type and path")
+            anim_path = Path(file_path)
+            if not anim_path.is_absolute():
+                anim_path = base_dir / anim_path
+            entries.append((motion, anim_path))
+        if not entries:
+            raise ValueError("Manifest ordered_files must contain at least one entry")
+        return entries
 
     files = manifest.get("files", {})
     if isinstance(files, dict):
@@ -511,6 +516,12 @@ def main() -> int:
             return 1
         try:
             written = convert_pack_manifest(manifest_path, Path(args.output_dir))
+        except json.JSONDecodeError as exc:
+            print(f"Error: invalid JSON in '{manifest_path}': {exc}", file=sys.stderr)
+            return 1
+        except ValueError as exc:
+            print(f"Error: batch conversion failed: {exc}", file=sys.stderr)
+            return 1
         except OSError as exc:
             print(f"Error: batch conversion failed: {exc}", file=sys.stderr)
             return 1

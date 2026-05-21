@@ -167,13 +167,21 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
     with open(manifest_path, "r", encoding="utf-8") as fh:
         manifest = json.load(fh)
 
-    files = manifest.get("files", {})
-    ordered_files = manifest.get("ordered_files", [])
-    if not isinstance(files, dict) or not files:
-        print("ERROR: Manifest has no files to validate")
+    files = manifest.get("files")
+    if files is None:
+        files = {}
+    ordered_files_present = "ordered_files" in manifest
+    ordered_files = manifest.get("ordered_files")
+    if ordered_files is None:
+        ordered_files = []
+    if not isinstance(files, dict):
+        print("ERROR: Manifest files must be an object")
         return 1
-    if ordered_files and not isinstance(ordered_files, list):
+    if ordered_files_present and not isinstance(ordered_files, list):
         print("ERROR: Manifest ordered_files must be a list")
+        return 1
+    if not files and not ordered_files:
+        print("ERROR: Manifest has no files to validate")
         return 1
 
     clip_validator = ClipValidator()
@@ -206,6 +214,8 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
 
     for motion, file_path in file_entries:
         path = Path(file_path)
+        if not path.is_absolute():
+            path = manifest_path.parent / path
         if not path.exists():
             all_valid = False
             print(f"ERROR [{motion}]: file missing -> {path}")

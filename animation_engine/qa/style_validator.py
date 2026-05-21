@@ -109,7 +109,7 @@ class StyleValidator:
                     duplicates.append(motion)
                 seen.add(motion)
             if duplicates:
-                errors.append(f"Duplicate clip ids: {', '.join(sorted(duplicates))}")
+                errors.append(f"Duplicate clip ids: {', '.join(sorted(set(duplicates)))}")
         else:
             actual = list(files.keys())
 
