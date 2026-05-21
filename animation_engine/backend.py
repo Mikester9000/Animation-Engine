@@ -502,21 +502,24 @@ class ProceduralBackend(AnimationBackend):
                 )
 
         elif motion_type == "climb_loop":
+            # Arm-reach cycle while climbing — seamless positional loop.
             if skeleton and len(skeleton.bones) > 0:
                 root_name = skeleton.bones[0].name
+                base_y = 0.15 * amplitude_scale
+                sway = 0.04 * amplitude_scale
                 step_duration = duration / (4 * cadence_scale)
                 for i in range(5):
                     t = i * step_duration
                     if t >= duration:
                         break
-                    y_base = 0.15 * amplitude_scale
-                    y_offset = y_base + (0.04 if i % 2 == 0 else -0.04) * amplitude_scale
+                    y_offset = base_y + (sway if i % 2 == 0 else -sway)
                     clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0, y_offset, 0])
+                # Return to start value to guarantee a seamless loop.
                 clip.add_keyframe(
                     root_name,
                     ChannelTarget.TRANSLATION,
                     duration,
-                    [0, 0.15 * amplitude_scale, 0],
+                    [0, base_y + sway, 0],
                 )
 
         elif motion_type == "climb_stop":

@@ -107,7 +107,7 @@ class StyleValidator:
 
     # Motions expected to loop seamlessly.
     _CYCLIC_MOTIONS = {"idle", "idle_alt", "idle_combat", "walk", "run", "sprint",
-                       "jump_loop", "crouch_walk"}
+                       "jump_loop", "climb_loop", "crouch_walk"}
 
     def __init__(self, duration_warning_ratio: float = 0.35, duration_error_ratio: float = 0.60):
         self.duration_warning_ratio = duration_warning_ratio

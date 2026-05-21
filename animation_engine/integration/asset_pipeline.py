@@ -30,7 +30,7 @@ PIPELINE_DEFAULT_BACKEND: str = "procedural"
 PIPELINE_DEFAULT_SAMPLE_RATE: float = 30.0
 PIPELINE_DEFAULT_SEED: int | None = None  # seed is forwarded to backends; the built-in procedural backend is deterministic and does not use RNG
 PIPELINE_DEFAULT_PROFILE_ID: str = DEFAULT_STYLE_PROFILE_ID
-PIPELINE_GENERATION_VERSION: int = 2  # increment when the output format changes
+PIPELINE_GENERATION_VERSION: int = 2  # v2: added semantic metadata and animation event markers
 MANIFEST_SCHEMA_VERSION: str = "2.0"
 
 # ---------------------------------------------------------------------------
