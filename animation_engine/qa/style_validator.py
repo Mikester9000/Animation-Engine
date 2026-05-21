@@ -218,8 +218,10 @@ class StyleValidator:
                                 f"!= expected {expected_duration[motion]:.3f}s"
                             )
                 sample_rate = metadata.get("sample_rate")
-                if not isinstance(sample_rate, (int, float)) or float(sample_rate) <= 0.0:
-                    errors.append(f"{motion}: metadata sample_rate missing or invalid")
+                if not isinstance(sample_rate, (int, float)):
+                    errors.append(f"{motion}: metadata sample_rate missing or wrong type")
+                elif float(sample_rate) <= 0.0:
+                    errors.append(f"{motion}: metadata sample_rate must be > 0 (got {sample_rate})")
 
         # Optional loop continuity checks on cyclic motions.
         if loop_reports:

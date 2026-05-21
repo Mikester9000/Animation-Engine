@@ -390,7 +390,7 @@ def test_style_validator_detects_clip_metadata_mismatch():
     }
     report = StyleValidator().validate_pack(manifest, clip_metadata=clip_metadata)
     assert not report.is_valid
-    assert "idle: metadata sample_rate missing or invalid" in report.errors
+    assert any("idle: metadata sample_rate" in e for e in report.errors)
 
 
 def test_cli_generate_pack_manifest_out_has_updated_manifest_path(tmp_path):
@@ -417,3 +417,39 @@ def test_cli_generate_pack_manifest_out_has_updated_manifest_path(tmp_path):
     with open(external_manifest, "r", encoding="utf-8") as fh:
         copied_manifest = json.load(fh)
     assert copied_manifest["manifest_path"] == str(external_manifest)
+
+
+def test_pipeline_byte_stable_output_same_inputs(tmp_path):
+    """Same skeleton + default settings must produce identical .anim bytes."""
+    import hashlib
+
+    from animation_engine.integration.asset_pipeline import (
+        PIPELINE_DEFAULT_BACKEND,
+        PIPELINE_DEFAULT_PROFILE_ID,
+        PIPELINE_DEFAULT_SAMPLE_RATE,
+        PIPELINE_DEFAULT_SEED,
+        PIPELINE_GENERATION_VERSION,
+    )
+
+    skel = _make_skeleton()
+
+    def _run(out_dir: Path) -> dict[str, str]:
+        pipeline = AnimationPipeline(
+            backend=PIPELINE_DEFAULT_BACKEND,
+            sample_rate=PIPELINE_DEFAULT_SAMPLE_RATE,
+            seed=PIPELINE_DEFAULT_SEED,
+            profile_id=PIPELINE_DEFAULT_PROFILE_ID,
+        )
+        manifest = pipeline.generate_all(str(out_dir), skel)
+        assert manifest["generation_version"] == PIPELINE_GENERATION_VERSION
+        return {
+            entry["motion_type"]: hashlib.md5(
+                Path(entry["path"]).read_bytes()
+            ).hexdigest()
+            for entry in manifest["ordered_files"]
+        }
+
+    hashes_a = _run(tmp_path / "run_a")
+    hashes_b = _run(tmp_path / "run_b")
+    # MD5 is used here for byte-content comparison only, not for security.
+    assert hashes_a == hashes_b, "Same inputs must produce byte-identical .anim files"
