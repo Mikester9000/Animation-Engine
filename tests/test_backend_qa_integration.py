@@ -147,9 +147,13 @@ def test_style_profiles_registry_supports_legacy_ff7_alias():
 
 
 def test_style_validator_detects_missing_required_clips():
+    profile = get_style_profile("ff10_ps2")
     manifest = {
         "profile_id": "ff10_ps2",
         "status": "ok",
+        "visual_target": profile.visual_target,
+        "gameplay_target": profile.gameplay_target,
+        "reference_titles": list(profile.reference_titles),
         "files": {"idle": "/tmp/idle.anim"},
     }
     report = StyleValidator().validate_pack(manifest)
@@ -159,9 +163,13 @@ def test_style_validator_detects_missing_required_clips():
 
 
 def test_style_validator_handles_invalid_manifest_files_type():
+    profile = get_style_profile("ff10_ps2")
     manifest = {
         "profile_id": "ff10_ps2",
         "status": "ok",
+        "visual_target": profile.visual_target,
+        "gameplay_target": profile.gameplay_target,
+        "reference_titles": list(profile.reference_titles),
         "files": [],
     }
     report = StyleValidator().validate_pack(manifest)
@@ -189,6 +197,9 @@ def test_style_validator_detects_wrong_clip_order_and_duplicates(monkeypatch):
     manifest = {
         "profile_id": "ff10_ps2",
         "status": "ok",
+        "visual_target": "fake",
+        "gameplay_target": "fake",
+        "reference_titles": ["fake"],
         "ordered_files": [
             {"motion_type": "walk", "path": "/tmp/walk.anim"},
             {"motion_type": "idle", "path": "/tmp/idle.anim"},
@@ -218,6 +229,9 @@ def test_style_validator_duplicate_clip_ids_are_deduplicated_in_error(monkeypatc
     manifest = {
         "profile_id": "ff10_ps2",
         "status": "ok",
+        "visual_target": "fake",
+        "gameplay_target": "fake",
+        "reference_titles": ["fake"],
         "ordered_files": [
             {"motion_type": "idle", "path": "/tmp/idle.anim"},
             {"motion_type": "idle", "path": "/tmp/idle2.anim"},
@@ -294,7 +308,15 @@ def test_cli_validate_pack_accepts_ordered_files_only_and_resolves_relative_path
     AnimExporter().export(
         model,
         [clip],
-        metadata={"style_profile": "ff10_ps2"},
+        metadata={
+            "style_profile": "ff10_ps2",
+            "motion_type": "idle",
+            "visual_target": "fake",
+            "gameplay_target": "fake",
+            "reference_titles": ["fake"],
+            "duration": 1.0,
+            "sample_rate": 30.0,
+        },
         path=str(anim_path),
     )
 
@@ -304,6 +326,12 @@ def test_cli_validate_pack_accepts_ordered_files_only_and_resolves_relative_path
             {
                 "status": "ok",
                 "profile_id": "ff10_ps2",
+                "visual_target": "fake",
+                "gameplay_target": "fake",
+                "reference_titles": ["fake"],
+                "expected": 1,
+                "generated": 1,
+                "required_clips": ["idle"],
                 "ordered_files": [{"motion_type": "idle", "path": "idle.anim"}],
             }
         ),
@@ -314,6 +342,55 @@ def test_cli_validate_pack_accepts_ordered_files_only_and_resolves_relative_path
     parser = build_parser()
     validate_args = parser.parse_args(["validate-pack", "--manifest", str(manifest_path)])
     assert _cmd_validate_pack(validate_args) == 0
+
+
+def test_style_validator_detects_manifest_art_direction_mismatch():
+    profile = get_style_profile("ff10_ps2")
+    manifest = {
+        "profile_id": "ff10_ps2",
+        "status": "ok",
+        "visual_target": "wrong",
+        "gameplay_target": profile.gameplay_target,
+        "reference_titles": list(profile.reference_titles),
+        "files": {clip.motion_type: f"/tmp/{clip.motion_type}.anim" for clip in profile.required_clips},
+    }
+    report = StyleValidator().validate_pack(manifest)
+    assert not report.is_valid
+    assert "Manifest visual_target does not match selected profile" in report.errors
+
+
+def test_style_validator_detects_clip_metadata_mismatch():
+    profile = get_style_profile("ff10_ps2")
+    manifest = {
+        "profile_id": "ff10_ps2",
+        "status": "ok",
+        "visual_target": profile.visual_target,
+        "gameplay_target": profile.gameplay_target,
+        "reference_titles": list(profile.reference_titles),
+        "required_clips": [clip.motion_type for clip in profile.required_clips],
+        "expected": len(profile.required_clips),
+        "generated": len(profile.required_clips),
+        "files": {clip.motion_type: f"/tmp/{clip.motion_type}.anim" for clip in profile.required_clips},
+    }
+    clip_metadata = {
+        clip.motion_type: {
+            "style_profile": profile.profile_id,
+            "motion_type": clip.motion_type,
+            "visual_target": profile.visual_target,
+            "gameplay_target": profile.gameplay_target,
+            "reference_titles": list(profile.reference_titles),
+            "duration": clip.duration,
+            "sample_rate": 30.0,
+        }
+        for clip in profile.required_clips
+    }
+    clip_metadata["idle"] = {
+        **clip_metadata["idle"],
+        "sample_rate": 0.0,
+    }
+    report = StyleValidator().validate_pack(manifest, clip_metadata=clip_metadata)
+    assert not report.is_valid
+    assert "idle: metadata sample_rate missing or invalid" in report.errors
 
 
 def test_cli_generate_pack_manifest_out_has_updated_manifest_path(tmp_path):
