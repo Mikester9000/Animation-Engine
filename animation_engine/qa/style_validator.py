@@ -162,7 +162,7 @@ class StyleValidator:
 
         manifest_failed = manifest.get("failed")
         if manifest.get("status") == "ok" and manifest_failed:
-            errors.append("Manifest status is ok but failed clip list is not empty")
+            errors.append("Manifest status is ok but failed clips are present")
 
         # Optional duration sanity checks.
         if clip_durations:
