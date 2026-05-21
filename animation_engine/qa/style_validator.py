@@ -12,6 +12,75 @@ from animation_engine.qa.loop_analyzer import LoopReport
 
 __all__ = ["StyleValidationReport", "StyleValidator"]
 
+# ---------------------------------------------------------------------------
+# Gameplay category definitions
+# ---------------------------------------------------------------------------
+
+#: Maps each motion ID to its gameplay category.
+CLIP_CATEGORY_MAP: dict[str, str] = {
+    "idle": "idle",
+    "idle_alt": "idle",
+    "idle_combat": "idle",
+    "walk": "exploration",
+    "run": "exploration",
+    "run_start": "exploration",
+    "run_stop": "exploration",
+    "sprint": "exploration",
+    "strafe_left": "exploration",
+    "strafe_right": "exploration",
+    "crouch": "exploration",
+    "crouch_walk": "exploration",
+    "turn_left": "exploration",
+    "turn_right": "exploration",
+    "jump_start": "traversal",
+    "jump_loop": "traversal",
+    "jump_land": "traversal",
+    "roll": "traversal",
+    "vault": "traversal",
+    "climb_start": "traversal",
+    "climb_loop": "traversal",
+    "climb_stop": "traversal",
+    "attack": "combat",
+    "attack_combo_1": "combat",
+    "attack_combo_2": "combat",
+    "attack_combo_3": "combat",
+    "heavy_attack": "combat",
+    "aerial_attack": "combat",
+    "cast": "combat",
+    "cast_channel": "combat",
+    "cast_release": "combat",
+    "defend": "combat",
+    "block": "combat",
+    "parry": "combat",
+    "dodge": "combat",
+    "hit_react": "reaction",
+    "stagger": "reaction",
+    "knockdown": "reaction",
+    "get_up": "reaction",
+    "death": "reaction",
+    "interact": "interaction",
+    "pickup": "interaction",
+    "victory": "idle",
+}
+
+#: Minimum number of clips required per category for a pack to be valid.
+CATEGORY_MIN_COVERAGE: dict[str, int] = {
+    "exploration": 3,
+    "combat": 3,
+    "traversal": 2,
+    "reaction": 2,
+}
+
+#: Groups of clips that must ALL be present if any member of the group is present.
+TRANSITION_CONTINUITY_GROUPS: list[tuple[str, ...]] = [
+    ("run_start", "run", "run_stop"),
+    ("jump_start", "jump_loop", "jump_land"),
+    ("climb_start", "climb_loop", "climb_stop"),
+    ("attack_combo_1", "attack_combo_2", "attack_combo_3"),
+    ("knockdown", "get_up"),
+    ("cast_channel", "cast_release"),
+]
+
 
 @dataclass
 class StyleValidationReport:
@@ -37,7 +106,8 @@ class StyleValidator:
     """Validate profile completeness and style-health signals for a pack."""
 
     # Motions expected to loop seamlessly.
-    _CYCLIC_MOTIONS = {"idle", "walk", "run", "jump_loop"}
+    _CYCLIC_MOTIONS = {"idle", "idle_alt", "idle_combat", "walk", "run", "sprint",
+                       "jump_loop", "crouch_walk"}
 
     def __init__(self, duration_warning_ratio: float = 0.35, duration_error_ratio: float = 0.60):
         self.duration_warning_ratio = duration_warning_ratio
@@ -164,6 +234,16 @@ class StyleValidator:
         if manifest.get("status") == "ok" and manifest_failed:
             errors.append("Manifest status is ok but failed clips are present")
 
+        # --- Gameplay category coverage gates (full packs only) -----------------
+        # Only enforce when the pack is large enough to plausibly satisfy all
+        # minimums; partial / test packs with fewer clips are exempt.
+        _min_full_pack = sum(CATEGORY_MIN_COVERAGE.values())
+        if len(actual_set) >= _min_full_pack:
+            self._validate_category_coverage(actual_set, errors, warnings)
+
+            # --- Transition continuity checks ----------------------------------
+            self._validate_transition_continuity(actual_set, errors, warnings)
+
         # Optional duration sanity checks.
         if clip_durations:
             for motion, expected_value in expected_duration.items():
@@ -238,3 +318,43 @@ class StyleValidator:
 
         is_valid = len(errors) == 0
         return StyleValidationReport(profile_id, is_valid, errors, warnings, missing, extra)
+
+    # -------------------------------------------------------------------------
+    # Internal helpers
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def _validate_category_coverage(
+        actual_set: set[str],
+        errors: list[str],
+        warnings: list[str],
+    ) -> None:
+        """Fail if any required category is under-represented in the clip set."""
+        category_counts: dict[str, int] = {}
+        for motion in actual_set:
+            cat = CLIP_CATEGORY_MAP.get(motion, "unknown")
+            category_counts[cat] = category_counts.get(cat, 0) + 1
+
+        for cat, min_count in CATEGORY_MIN_COVERAGE.items():
+            present = category_counts.get(cat, 0)
+            if present < min_count:
+                errors.append(
+                    f"Category '{cat}' has insufficient coverage: "
+                    f"{present}/{min_count} required clips present"
+                )
+
+    @staticmethod
+    def _validate_transition_continuity(
+        actual_set: set[str],
+        errors: list[str],
+        warnings: list[str],
+    ) -> None:
+        """Warn when a transition group is only partially present."""
+        for group in TRANSITION_CONTINUITY_GROUPS:
+            present = [m for m in group if m in actual_set]
+            if present and len(present) < len(group):
+                missing_in_group = [m for m in group if m not in actual_set]
+                errors.append(
+                    f"Transition continuity broken for group "
+                    f"({', '.join(group)}): missing {', '.join(missing_in_group)}"
+                )

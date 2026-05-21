@@ -140,13 +140,24 @@ def _cmd_generate_pack(args: argparse.Namespace) -> int:
         with open(manifest_out, "w", encoding="utf-8") as fh:
             json.dump(manifest, fh, indent=2)
 
+    # Strict mode: fail if any clip failed OR if any warning-level issue exists.
+    if args.strict and manifest.get("failed"):
+        print("STRICT MODE: generation failures are not allowed")
+        return 1
+
     print("Pack generation summary:")
-    print(f"  profile:   {manifest.get('profile_id')}")
-    print(f"  status:    {manifest.get('status')}")
-    print(f"  generated: {manifest.get('generated')}/{manifest.get('expected')}")
-    print(f"  backend:   {_manifest_backend_name(manifest)}")
-    print(f"  seed:      {manifest.get('seed')}")
-    print(f"  manifest:  {manifest.get('manifest_path')}")
+    print(f"  profile:        {manifest.get('profile_id')}")
+    print(f"  schema_version: {manifest.get('schema_version', 'n/a')}")
+    print(f"  status:         {manifest.get('status')}")
+    print(f"  generated:      {manifest.get('generated')}/{manifest.get('expected')}")
+    print(f"  backend:        {_manifest_backend_name(manifest)}")
+    print(f"  seed:           {manifest.get('seed')}")
+    print(f"  manifest:       {manifest.get('manifest_path')}")
+    category_coverage = (manifest.get("gameplay_semantic") or {}).get("category_coverage", {})
+    if category_coverage:
+        print("  categories:")
+        for cat, clips in sorted(category_coverage.items()):
+            print(f"    {cat}: {len(clips)} clips")
     if manifest.get("failed"):
         for motion, reason in sorted(manifest["failed"].items()):
             print(f"  FAILED {motion}: {reason}")
@@ -195,6 +206,9 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
     clip_metadata: dict[str, dict[str, Any] | None] = {}
     profile_id = str(manifest.get("profile_id", "")).strip()
 
+    # Structured report data (for --json-report output).
+    clip_reports_data: list[dict[str, Any]] = []
+
     if ordered_files:
         file_entries = []
         for index, entry in enumerate(ordered_files):
@@ -220,12 +234,14 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
         if not path.exists():
             all_valid = False
             print(f"ERROR [{motion}]: file missing -> {path}")
+            clip_reports_data.append({"motion": motion, "status": "missing_file"})
             continue
 
         model, clips, _, metadata = AnimImporter().import_file(str(path), include_metadata=True)
         if model.skeleton is None:
             all_valid = False
             print(f"ERROR [{motion}]: no skeleton in file")
+            clip_reports_data.append({"motion": motion, "status": "no_skeleton"})
             continue
 
         skel_report = skeleton_validator.validate_skeleton(model.skeleton)
@@ -238,6 +254,7 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
         if not clips:
             all_valid = False
             print(f"ERROR [{motion}]: no clips in file")
+            clip_reports_data.append({"motion": motion, "status": "no_clips"})
             continue
 
         for clip in clips:
@@ -252,6 +269,16 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
                     print(f"  ERROR: {err}")
             for warn in clip_report.warnings:
                 print(f"  WARN: {warn}")
+            clip_reports_data.append(
+                {
+                    "motion": motion,
+                    "clip_name": clip.name,
+                    "clip_valid": clip_report.is_valid,
+                    "clip_errors": clip_report.errors,
+                    "clip_warnings": clip_report.warnings,
+                    "loop_seamless": loop_report.is_seamless,
+                }
+            )
 
         style_profile = metadata.get("style_profile") if metadata is not None else None
         if style_profile and style_profile != profile_id:
@@ -275,6 +302,28 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
         print(f"  WARN: {warn}")
     if not style_report.is_valid:
         all_valid = False
+
+    # Optionally emit machine-readable JSON report.
+    json_report_path = getattr(args, "json_report", None)
+    if json_report_path:
+        report_obj = {
+            "manifest": str(manifest_path),
+            "profile_id": profile_id,
+            "overall_valid": all_valid,
+            "style_report": {
+                "is_valid": style_report.is_valid,
+                "errors": style_report.errors,
+                "warnings": style_report.warnings,
+                "missing_clips": style_report.missing_clips,
+                "extra_clips": style_report.extra_clips,
+            },
+            "clips": clip_reports_data,
+        }
+        report_out = Path(json_report_path)
+        report_out.parent.mkdir(parents=True, exist_ok=True)
+        with open(report_out, "w", encoding="utf-8") as fh:
+            json.dump(report_obj, fh, indent=2)
+        print(f"\nJSON report written to: {report_out}")
 
     return 0 if all_valid else 1
 
@@ -358,6 +407,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional explicit path for copied manifest JSON",
     )
+    generate_pack_parser.add_argument(
+        "--strict",
+        action="store_true",
+        default=False,
+        help="Fail with non-zero exit code if any clip generation fails",
+    )
     generate_pack_parser.set_defaults(func=_cmd_generate_pack)
 
     # validate-pack command
@@ -369,6 +424,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--manifest",
         required=True,
         help="Path to generated pack_manifest.json",
+    )
+    validate_pack_parser.add_argument(
+        "--json-report",
+        default=None,
+        metavar="PATH",
+        help="Write machine-readable JSON validation report to PATH",
     )
     validate_pack_parser.set_defaults(func=_cmd_validate_pack)
 

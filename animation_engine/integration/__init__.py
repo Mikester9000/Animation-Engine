@@ -9,6 +9,7 @@ from animation_engine.integration.asset_pipeline import AnimationPipeline
 from animation_engine.integration.style_profiles import (
     ClipSpec,
     DEFAULT_STYLE_PROFILE_ID,
+    MotionStyleVariants,
     StyleProfile,
     get_style_profile,
     list_style_profiles,
@@ -18,6 +19,7 @@ __all__ = [
     "AnimationPipeline",
     "ClipSpec",
     "DEFAULT_STYLE_PROFILE_ID",
+    "MotionStyleVariants",
     "StyleProfile",
     "get_style_profile",
     "list_style_profiles",

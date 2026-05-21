@@ -26,6 +26,8 @@ class AnimationClip:
     name        : Human-readable name (e.g. "run_cycle").
     fps         : Original authoring frame rate (informational only).
     loop        : Whether the clip should loop seamlessly.
+    events      : Timeline event markers for gameplay synchronisation
+                  (footstep, contact, hit, cancel, cast_release, etc.).
     """
 
     def __init__(
@@ -39,6 +41,34 @@ class AnimationClip:
         self.loop: bool = loop
         # Channels keyed by (bone_name, ChannelTarget)
         self._channels: Dict[Tuple[str, ChannelTarget], AnimationChannel] = {}
+        # Event markers: list of {"name": str, "time": float, "data": dict}
+        self._events: List[dict] = []
+
+    # -- event management ----------------------------------------------------
+
+    def add_event(self, name: str, time: float, data: dict | None = None) -> None:
+        """Add a named timeline event at *time* seconds.
+
+        Parameters
+        ----------
+        name:
+            Event identifier (e.g. ``"footstep_left"``, ``"hit_window_open"``).
+        time:
+            Time in seconds at which the event fires.
+        data:
+            Optional dict of event-specific payload (e.g. ``{"foot": "left"}``).
+        """
+        self._events.append({"name": name, "time": float(time), "data": data or {}})
+
+    def get_events(self, name: str | None = None) -> List[dict]:
+        """Return all events, optionally filtered by *name*.
+
+        Returns events sorted by time.
+        """
+        events = sorted(self._events, key=lambda e: e["time"])
+        if name is not None:
+            events = [e for e in events if e["name"] == name]
+        return events
 
     # -- channel management --------------------------------------------------
 
@@ -143,12 +173,15 @@ class AnimationClip:
     # -- serialisation -------------------------------------------------------
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "name": self.name,
             "fps": self.fps,
             "loop": self.loop,
             "channels": [ch.to_dict() for ch in self._channels.values()],
         }
+        if self._events:
+            d["events"] = list(self._events)
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "AnimationClip":
@@ -160,6 +193,9 @@ class AnimationClip:
         for ch_data in d.get("channels", []):
             ch = AnimationChannel.from_dict(ch_data)
             clip._channels[(ch.bone_name, ch.target)] = ch
+        for ev in d.get("events", []):
+            if isinstance(ev, dict) and "name" in ev and "time" in ev:
+                clip.add_event(ev["name"], float(ev["time"]), ev.get("data") or {})
         return clip
 
     def __repr__(self) -> str:

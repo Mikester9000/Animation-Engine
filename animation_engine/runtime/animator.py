@@ -17,12 +17,12 @@ consumed directly by the rendering system.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
 from ..model.model import Model
-from ..math_utils import Matrix4x4, Transform
+from ..math_utils import Matrix4x4, Transform, Vector3
 from ..animation.blend_tree import BlendTree
 from ..animation.ik_solver import IKSolver, IKChain
 from ..animation.morph_track import MorphTrack
@@ -40,6 +40,11 @@ class Animator:
     morph_tracks    : List of MorphTracks driving morph-target weights.
     skin_matrices   : (Output) Per-bone final skin matrix list, ready for GPU.
     morph_weights   : (Output) Dict of morph-target name → current weight.
+    root_motion_delta : (Output) Root-motion translation delta for the last
+                        ``update()`` call (world-space XYZ).  Consumed by the
+                        character controller each frame.
+    event_callbacks : Dict mapping event name → list of callables.  Each
+                      callable receives the event dict when the event fires.
     """
 
     def __init__(
@@ -66,8 +71,30 @@ class Animator:
         ]
         self.morph_weights: Dict[str, float] = {}
 
+        # Root-motion output — accumulated XYZ delta since last update().
+        self.root_motion_delta: Vector3 = Vector3.zero()
+
+        # Event dispatch table: event_name -> [callback, ...]
+        self.event_callbacks: Dict[str, List[Callable[[dict], None]]] = {}
+
         # Elapsed time in seconds (used for morph track evaluation)
         self._time: float = 0.0
+        # Track previous time to detect event crossings each frame.
+        self._prev_time: float = 0.0
+
+    def register_event_callback(
+        self, event_name: str, callback: Callable[[dict], None]
+    ) -> None:
+        """Register *callback* to be called whenever *event_name* fires.
+
+        Parameters
+        ----------
+        event_name:
+            The animation event name to listen for (e.g. ``"footstep_left"``).
+        callback:
+            Callable receiving the event dict ``{"name", "time", "data"}``.
+        """
+        self.event_callbacks.setdefault(event_name, []).append(callback)
 
     def update(self, delta: float, context: dict = None) -> None:
         """
@@ -76,14 +103,13 @@ class Animator:
         Call this once per game tick from Game Engine for Teaching's entity
         update loop.
         """
+        self._prev_time = self._time
         self._time += delta
 
         # 1. Advance blend tree → per-bone FK pose
         pose: Dict[str, Transform] = self.blend_tree.update(delta, context)
 
         # 2. Apply IK overrides on top of the FK pose
-        #    IK works in world space; we build world transforms first, then
-        #    pass them to the solver which writes back corrected transforms.
         if self.ik_chains and self.model.skeleton:
             self._apply_ik(pose)
 
@@ -92,6 +118,12 @@ class Animator:
 
         # 4. Evaluate morph-target weights
         self._update_morph_weights()
+
+        # 5. Extract root-motion delta from pose (XZ translation from root bone)
+        self._extract_root_motion(pose)
+
+        # 6. Dispatch animation events that fall in (prev_time, current_time]
+        self._dispatch_events()
 
     # -- IK ------------------------------------------------------------------
 
@@ -177,6 +209,52 @@ class Animator:
         """Evaluate all morph tracks at the current animation time."""
         for track in self.morph_tracks:
             self.morph_weights[track.morph_name] = track.evaluate(self._time)
+
+    # -- root motion ---------------------------------------------------------
+
+    def _extract_root_motion(self, pose: Dict[str, Transform]) -> None:
+        """Compute XYZ root-motion delta from the current pose.
+
+        The delta is derived from the root bone's translation channel.  The
+        caller (character controller) is responsible for consuming and zeroing
+        this value each frame.
+        """
+        skeleton = self.model.skeleton
+        if skeleton is None or not skeleton.bones:
+            self.root_motion_delta = Vector3.zero()
+            return
+        root_name = skeleton.bones[0].name
+        root_transform = pose.get(root_name)
+        if root_transform is not None:
+            self.root_motion_delta = root_transform.position
+        else:
+            self.root_motion_delta = Vector3.zero()
+
+    # -- event dispatch -------------------------------------------------------
+
+    def _dispatch_events(self) -> None:
+        """Fire callbacks for any animation events in the current frame window.
+
+        Checks the active clip's event list (if accessible) for events whose
+        ``time`` falls in the half-open interval ``(prev_time, current_time]``.
+        """
+        if not self.event_callbacks:
+            return
+
+        # Retrieve the active clip from the blend tree's current state.
+        active_clip = None
+        state = getattr(self.blend_tree, "_current_state", None)
+        if state is not None:
+            active_clip = getattr(state, "clip", None)
+        if active_clip is None:
+            return
+
+        for event in active_clip.get_events():
+            t = event["time"]
+            if self._prev_time < t <= self._time:
+                callbacks = self.event_callbacks.get(event["name"], [])
+                for cb in callbacks:
+                    cb(event)
 
     # -- convenience ---------------------------------------------------------
 
