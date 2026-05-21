@@ -15,6 +15,17 @@ This file is the single ordered master plan from current repository state to a r
 
 ---
 
+## Art Direction Baseline
+
+All planned outputs must satisfy this visual target:
+
+- Ship assets with a **high-end PS2-era JRPG look** that would still feel plausible on PlayStation 2-class hardware.
+- Use *Final Fantasy VII*, *VIII*, *IX*, *X*, and *XII* as the primary visual readability references.
+- Keep the motion library broad enough for modern gameplay/features comparable to *Final Fantasy VII Remake* and *Final Fantasy XV* even while preserving the PS2-era presentation target.
+- Preserve this direction in generated metadata, manifests, and hand-off documentation so downstream tools can validate it.
+
+---
+
 ## Phase A — Format + Profile Foundations
 
 ### Task 01
@@ -29,8 +40,8 @@ This file is the single ordered master plan from current repository state to a r
 
 ### Task 02
 - **Task Name:** Create nostalgia style profile registry
-- **Narrative Logic:** Generation must be profile-driven so outputs are consistent and reproducible across FF7-like, FF8-like, and FF10-like variants.
-- **Code Structure Need:** Add centralized immutable style profile definitions for motion packs, clip timing, naming, and cinematic mood.
+- **Narrative Logic:** Generation must be profile-driven so outputs stay inside the shared PS2-era art direction while still covering modern gameplay needs.
+- **Code Structure Need:** Add centralized immutable style profile definitions for motion packs, clip timing, naming, cinematic mood, and explicit art-direction metadata.
 - **READ_DIRECTORY:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration`
 - **READ_LINES:** `DIRECTORY`
 - **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/integration/style_profiles.py`
@@ -281,6 +292,6 @@ This file is the single ordered master plan from current repository state to a r
 
 At completion, export package must include:
 - Complete ordered `.anim` clip set per selected profile.
-- Pack manifest JSON with profile ID, clip inventory, and metadata.
+- Pack manifest JSON with profile ID, PS2-era visual target, modern gameplay target, reference titles, clip inventory, and metadata.
 - Validation status report (pass/fail with reasons).
 - Updated compatibility documentation for import in `Mikester9000/GameRewritten` repo.

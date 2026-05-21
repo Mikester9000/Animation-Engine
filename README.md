@@ -1,9 +1,11 @@
 # Animation Engine
 
 A professional animation tool for creating **3-D models and animated assets**
-compatible with **Game Engine for Teaching**.  Inspired by the animation
-pipeline of *Final Fantasy XV*, the engine delivers AAA-quality animation
-features in a clean, well-commented, Python codebase.
+compatible with **Game Engine for Teaching** and `Mikester9000/GameRewritten`.
+The target output is a **high-end PS2-era JRPG presentation** inspired by
+*Final Fantasy VII*, *VIII*, *IX*, *X*, and *XII*, while still supporting
+the broader gameplay and feature demands of modern open-world combat/exploration
+games such as *Final Fantasy VII Remake* and *Final Fantasy XV*.
 
 ---
 
@@ -12,7 +14,7 @@ features in a clean, well-commented, Python codebase.
 | Feature | Details |
 |---------|---------|
 | **Skeletal Animation** | Hierarchical bone rigs (50+ bones), local-space keyframes, world-space skin matrices |
-| **Cubic-Spline Interpolation** | STEP / LINEAR / CUBICSPLINE modes matching glTF 2.0 — the same curves used in FF15 |
+| **Cubic-Spline Interpolation** | STEP / LINEAR / CUBICSPLINE modes matching glTF 2.0 for cinematic-but-readable motion timing |
 | **Animation Blending** | State-machine driven BlendTree with smooth cubic ease-in/out crossfades |
 | **Inverse Kinematics** | FABRIK solver for foot-placement, hand-IK, and look-at constraints |
 | **Morph Targets** | Blend-shape / morph-target animation for facial expressions and lip-sync |
@@ -34,8 +36,21 @@ animation_engine/
 ├── io/              AnimExporter/Importer (.anim), GltfExporter/Importer (.gltf)
 ├── runtime/         Animator (per-frame update loop), cpu_skin_mesh
 └── editor/          Tkinter timeline + bone editor (AnimationEditor)
-tests/               pytest test suite (95 tests)
+tests/               pytest test suite
 ```
+
+---
+
+## Art Direction Contract
+
+All future generated content should follow these output rules:
+
+- **Visual target:** Aim for the highest-quality JRPG animation presentation that still feels believable on **PlayStation 2-class hardware**.
+- **Reference mix:** Keep silhouettes, posing clarity, and animation readability aligned with *Final Fantasy VII*, *VIII*, *IX*, *X*, and *XII* era presentation goals.
+- **Gameplay coverage:** Even with the PS2-era visual target, the motion library must support more modern gameplay beats such as seamless traversal, reactive combat, dodges, spell casting, hit reactions, and celebratory states.
+- **Profile metadata:** Generated packs now embed the visual target, gameplay target, and reference titles in pack manifests and per-clip `.anim` metadata so downstream tools can enforce the direction.
+
+Use the built-in style profiles when generating packs; they are the repository's source of truth for this art direction.
 
 ---
 
@@ -99,7 +114,7 @@ python -m animation_engine.editor.main
 ### Run the tests
 
 ```bash
-pytest tests/ -v
+python -m pytest -q
 ```
 
 ---
@@ -148,3 +163,8 @@ and `animator.morph_weights` to blend-shape weight uniforms.
 
 glTF 2.0 export ensures compatibility with any renderer that supports the
 standard — every modern game engine and DCC tool does.
+
+For profile-based pack generation, treat the generated `pack_manifest.json` as
+the hand-off contract. It now records the selected profile, PS2-era visual
+target, modern gameplay target, reference titles, and the ordered clip inventory
+expected by downstream runtime/import tools.

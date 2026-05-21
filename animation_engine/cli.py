@@ -277,7 +277,7 @@ def build_parser() -> argparse.ArgumentParser:
     generate_pack_parser.add_argument(
         "--profile",
         default=DEFAULT_STYLE_PROFILE_ID,
-        help="Style profile ID (e.g. ff8_ps2, ff10_ps2, ff7_psx)",
+        help="Style profile ID (e.g. ff7_ps2, ff8_ps2, ff9_ps2, ff10_ps2, ff12_ps2)",
     )
     generate_pack_parser.add_argument(
         "--backend",
