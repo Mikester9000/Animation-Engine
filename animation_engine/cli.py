@@ -192,6 +192,7 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
     all_valid = True
     clip_durations: dict[str, float] = {}
     loop_reports = {}
+    clip_metadata: dict[str, dict[str, Any] | None] = {}
     profile_id = str(manifest.get("profile_id", "")).strip()
 
     if ordered_files:
@@ -259,11 +260,13 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
                 f"ERROR [{motion}]: metadata style_profile "
                 f"{style_profile} != manifest profile_id {profile_id}"
             )
+        clip_metadata[motion] = metadata if isinstance(metadata, dict) else None
 
     style_report = style_validator.validate_pack(
         manifest,
         clip_durations=clip_durations,
         loop_reports=loop_reports,
+        clip_metadata=clip_metadata,
     )
     print(f"\nStyle report: {style_report.summary()}")
     for err in style_report.errors:

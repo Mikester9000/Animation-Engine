@@ -48,6 +48,7 @@ class StyleValidator:
         manifest: dict[str, Any],
         clip_durations: dict[str, float] | None = None,
         loop_reports: dict[str, LoopReport] | None = None,
+        clip_metadata: dict[str, dict[str, Any] | None] | None = None,
     ) -> StyleValidationReport:
         """
         Validate a generated pack using manifest + optional measured clip data.
@@ -72,6 +73,28 @@ class StyleValidator:
             errors.append(f"Manifest status is '{manifest.get('status')}', expected 'ok'")
 
         expected = [clip.motion_type for clip in profile.required_clips]
+        expected_duration = {
+            clip.motion_type: float(getattr(clip, "duration", 0.0))
+            for clip in profile.required_clips
+        }
+
+        if manifest.get("visual_target") != profile.visual_target:
+            errors.append("Manifest visual_target does not match selected profile")
+        if manifest.get("gameplay_target") != profile.gameplay_target:
+            errors.append("Manifest gameplay_target does not match selected profile")
+        if manifest.get("reference_titles") != list(profile.reference_titles):
+            errors.append("Manifest reference_titles do not match selected profile")
+
+        manifest_required = manifest.get("required_clips")
+        if manifest_required is not None and manifest_required != expected:
+            errors.append("Manifest required_clips does not match selected profile requirements")
+
+        manifest_expected = manifest.get("expected")
+        if manifest_expected is not None and manifest_expected != len(expected):
+            errors.append(
+                f"Manifest expected={manifest_expected} does not match required count {len(expected)}"
+            )
+
         files = manifest.get("files")
         if files is None:
             files = {}
@@ -131,9 +154,18 @@ class StyleValidator:
                 f"{', '.join(expected)}; got {', '.join(actual)}"
             )
 
+        manifest_generated = manifest.get("generated")
+        if manifest_generated is not None and manifest_generated != len(actual):
+            errors.append(
+                f"Manifest generated={manifest_generated} does not match discovered clips {len(actual)}"
+            )
+
+        manifest_failed = manifest.get("failed")
+        if manifest.get("status") == "ok" and manifest_failed:
+            errors.append("Manifest status is ok but failed clips are present")
+
         # Optional duration sanity checks.
         if clip_durations:
-            expected_duration = {clip.motion_type: clip.duration for clip in profile.required_clips}
             for motion, expected_value in expected_duration.items():
                 if motion not in clip_durations:
                     continue
@@ -151,6 +183,45 @@ class StyleValidator:
                         f"{motion}: duration {actual_value:.3f}s differs from expected "
                         f"{expected_value:.3f}s (diff={relative_diff:.0%})"
                     )
+
+        if clip_metadata:
+            for motion in expected:
+                metadata = clip_metadata.get(motion)
+                if not isinstance(metadata, dict):
+                    errors.append(f"{motion}: missing metadata for style validation")
+                    continue
+                if metadata.get("style_profile") != profile.profile_id:
+                    errors.append(
+                        f"{motion}: metadata style_profile {metadata.get('style_profile')!r} "
+                        f"!= {profile.profile_id!r}"
+                    )
+                if metadata.get("motion_type") != motion:
+                    errors.append(
+                        f"{motion}: metadata motion_type {metadata.get('motion_type')!r} "
+                        f"!= {motion!r}"
+                    )
+                if metadata.get("visual_target") != profile.visual_target:
+                    errors.append(f"{motion}: metadata visual_target does not match profile")
+                if metadata.get("gameplay_target") != profile.gameplay_target:
+                    errors.append(f"{motion}: metadata gameplay_target does not match profile")
+                if metadata.get("reference_titles") != list(profile.reference_titles):
+                    errors.append(f"{motion}: metadata reference_titles do not match profile")
+                if motion in expected_duration:
+                    metadata_duration = metadata.get("duration")
+                    if not isinstance(metadata_duration, (int, float)):
+                        errors.append(f"{motion}: metadata duration missing or not numeric")
+                    else:
+                        diff = abs(float(metadata_duration) - expected_duration[motion])
+                        if diff > 1e-6:
+                            errors.append(
+                                f"{motion}: metadata duration {float(metadata_duration):.3f}s "
+                                f"!= expected {expected_duration[motion]:.3f}s"
+                            )
+                sample_rate = metadata.get("sample_rate")
+                if not isinstance(sample_rate, (int, float)):
+                    errors.append(f"{motion}: metadata sample_rate missing or wrong type")
+                elif float(sample_rate) <= 0.0:
+                    errors.append(f"{motion}: metadata sample_rate must be > 0 (got {sample_rate})")
 
         # Optional loop continuity checks on cyclic motions.
         if loop_reports:

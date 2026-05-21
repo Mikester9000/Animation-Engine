@@ -12,7 +12,24 @@ from typing import Any
 
 from animation_engine.integration.style_profiles import DEFAULT_STYLE_PROFILE_ID
 
-__all__ = ["AnimationPipeline"]
+__all__ = [
+    "AnimationPipeline",
+    "PIPELINE_DEFAULT_BACKEND",
+    "PIPELINE_DEFAULT_SAMPLE_RATE",
+    "PIPELINE_DEFAULT_SEED",
+    "PIPELINE_DEFAULT_PROFILE_ID",
+    "PIPELINE_GENERATION_VERSION",
+]
+
+# ---------------------------------------------------------------------------
+# Pinned generation defaults — edit here to change the entire pipeline's
+# baseline without hunting through call-sites.
+# ---------------------------------------------------------------------------
+PIPELINE_DEFAULT_BACKEND: str = "procedural"
+PIPELINE_DEFAULT_SAMPLE_RATE: float = 30.0
+PIPELINE_DEFAULT_SEED: int | None = None  # seed is forwarded to backends; the built-in procedural backend is deterministic and does not use RNG
+PIPELINE_DEFAULT_PROFILE_ID: str = DEFAULT_STYLE_PROFILE_ID
+PIPELINE_GENERATION_VERSION: int = 1  # increment when the output format changes
 
 
 class AnimationPipeline:
@@ -21,19 +38,23 @@ class AnimationPipeline:
     Parameters
     ----------
     backend:
-        Animation backend to use (default: "procedural").
+        Animation backend to use (default: ``PIPELINE_DEFAULT_BACKEND``).
     sample_rate:
-        Animation FPS (default: 30.0).
+        Animation FPS (default: ``PIPELINE_DEFAULT_SAMPLE_RATE``).
     seed:
-        Random seed for reproducibility.
+        Optional seed forwarded to the backend.  The built-in ``procedural``
+        backend is fully deterministic and never calls into any RNG, so the
+        same inputs always produce byte-stable outputs regardless of this value.
+    profile_id:
+        Style profile for the generated pack (default: ``PIPELINE_DEFAULT_PROFILE_ID``).
     """
 
     def __init__(
         self,
-        backend: str = "procedural",
-        sample_rate: float = 30.0,
-        seed: int | None = None,
-        profile_id: str = DEFAULT_STYLE_PROFILE_ID,
+        backend: str = PIPELINE_DEFAULT_BACKEND,
+        sample_rate: float = PIPELINE_DEFAULT_SAMPLE_RATE,
+        seed: int | None = PIPELINE_DEFAULT_SEED,
+        profile_id: str = PIPELINE_DEFAULT_PROFILE_ID,
     ) -> None:
         from animation_engine.backend import BackendRegistry
 
@@ -136,7 +157,7 @@ class AnimationPipeline:
             "backend_name": self.backend_id,
             "seed": getattr(self.backend, "seed", None),
             "sample_rate": self.sample_rate,
-            "generation_version": 1,
+            "generation_version": PIPELINE_GENERATION_VERSION,
             "manifest_path": str(manifest_path),
         }
         with open(manifest_path, "w", encoding="utf-8") as fh:
