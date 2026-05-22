@@ -622,7 +622,7 @@ def test_animator_root_motion_delta_is_per_frame_delta():
     animator = Animator(model, bt)
 
     animator.update(0.25)
-    assert animator.root_motion_delta == Vector3.zero()
+    assert animator.root_motion_delta == Vector3(0.5, 0.0, 0.0)
 
     animator.update(0.25)
     assert animator.root_motion_delta == Vector3(0.5, 0.0, 0.0)

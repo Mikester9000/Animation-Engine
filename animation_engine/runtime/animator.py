@@ -71,7 +71,7 @@ class Animator:
 
         # Root-motion output — accumulated XYZ delta since last update().
         self.root_motion_delta: Vector3 = Vector3.zero()
-        self._prev_root_position: Optional[Vector3] = None
+        self._prev_root_position: Optional[Vector3] = self._sample_active_root_position()
 
         # Event dispatch table: event_name -> [callback, ...]
         self.event_callbacks: Dict[str, List[Callable[[dict], None]]] = {}
@@ -216,6 +216,21 @@ class Animator:
             self.morph_weights[track.morph_name] = track.evaluate(self._time)
 
     # -- root motion ---------------------------------------------------------
+
+    def _sample_active_root_position(self) -> Optional[Vector3]:
+        """Return the active state's current root-bone position, if available."""
+        skeleton = self.model.skeleton
+        if skeleton is None or not skeleton.bones:
+            return None
+        state = getattr(self.blend_tree, "_current_state", None)
+        if state is None:
+            return None
+        clip = getattr(state, "clip", None)
+        if clip is None:
+            return None
+        root_name = skeleton.bones[0].name
+        local_time = getattr(state, "_local_time", 0.0)
+        return clip.evaluate_bone(root_name, local_time).position
 
     def _extract_root_motion(self, pose: Dict[str, Transform]) -> None:
         """Compute XYZ root-motion delta from the current pose.
