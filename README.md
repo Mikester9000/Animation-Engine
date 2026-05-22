@@ -151,6 +151,15 @@ GltfExporter().export(model, [clip], "character.gltf")
 python -m animation_engine.editor.main
 ```
 
+Editor workflow (PS2-style preview target for GameRewritten import):
+
+1. Create or open a `.anim` file.
+2. Select a clip in the clip browser/selector.
+3. Use play/stop/frame-step/scrub to inspect timing.
+4. Preview in the center viewport (PS2 lighting presets + grid/compare options).
+5. Adjust keys/events/properties and verify motion in the live viewport.
+6. Save `.anim` once preview matches expected in-game PS2-era look.
+
 ### Run the tests
 
 ```bash
@@ -232,8 +241,14 @@ Run this file from the repository root on Windows:
 run_animation_engine_windows.bat
 ```
 
+Launch editor directly with PS2 preview:
+
+```bat
+run_animation_engine_windows.bat --editor
+```
+
 The batch launcher creates `.venv` (if needed), installs dependencies with
-`pip install -e ".[dev]"`, and opens the production GUI.
+`pip install -e ".[dev]"`, and opens the selected GUI mode.
 
 The `--strict` flag causes `generate-pack` to exit non-zero if any clip fails to generate.
 

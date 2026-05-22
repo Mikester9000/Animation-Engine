@@ -1,5 +1,10 @@
 """animation_engine.editor — public re-exports."""
 
-from .main import AnimationEditor
+from .state import PlaybackState
 
-__all__ = ["AnimationEditor"]
+try:  # pragma: no cover - optional when tkinter isn't available in test env
+    from .main import AnimationEditor
+except ModuleNotFoundError:  # pragma: no cover
+    AnimationEditor = None  # type: ignore[assignment]
+
+__all__ = ["PlaybackState", "AnimationEditor"]

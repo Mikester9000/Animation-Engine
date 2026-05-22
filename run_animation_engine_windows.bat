@@ -38,8 +38,15 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [Animation-Engine] Launching production GUI...
-python -m animation_engine.cli launch-production-gui
+set MODE=%~1
+if /I "%MODE%"=="--editor" (
+    echo [Animation-Engine] Launching editor GUI (PS2 preview)...
+    python -m animation_engine.editor.main
+) else (
+    echo [Animation-Engine] Launching production GUI...
+    echo [Animation-Engine] Tip: pass --editor to launch the PS2 preview editor window.
+    python -m animation_engine.cli launch-production-gui
+)
 set EXIT_CODE=%errorlevel%
 
 if %EXIT_CODE% neq 0 (
