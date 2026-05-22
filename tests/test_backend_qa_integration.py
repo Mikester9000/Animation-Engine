@@ -8,6 +8,7 @@ from animation_engine.animation import AnimationClip
 from animation_engine.animation.channel import ChannelTarget
 from animation_engine.backend import AnimationBackend, BackendRegistry, ProceduralBackend
 from animation_engine.cli import (
+    _cmd_build_production_pack,
     build_parser,
     _cmd_generate_pack,
     _cmd_list_backends,
@@ -281,6 +282,37 @@ def test_cli_generate_pack_and_validate_pack_commands(tmp_path, capsys):
     validate_args = parser.parse_args(["validate-pack", "--manifest", str(manifest_path)])
     assert _cmd_validate_pack(validate_args) == 0
     out = capsys.readouterr().out
+    assert "Style report:" in out
+
+
+def test_cli_build_production_pack_command(tmp_path, capsys):
+    source_anim = tmp_path / "source.anim"
+    model = Model("source")
+    model.skeleton = _make_skeleton()
+    AnimExporter().export(model, [], path=str(source_anim))
+
+    output_dir = tmp_path / "pack"
+    report_path = output_dir / "validation_report.json"
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "build-production-pack",
+            "--skeleton-anim",
+            str(source_anim),
+            "--output-dir",
+            str(output_dir),
+            "--profile",
+            "ff10_ps2",
+            "--strict",
+            "--json-report",
+            str(report_path),
+        ]
+    )
+    assert _cmd_build_production_pack(args) == 0
+    assert (output_dir / "pack_manifest.json").exists()
+    assert report_path.exists()
+    out = capsys.readouterr().out
+    assert "Pack generation summary:" in out
     assert "Style report:" in out
 
 

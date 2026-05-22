@@ -204,6 +204,37 @@ animation-engine validate-pack \
     --json-report assets/hero_pack/validation_report.json
 ```
 
+### One-command production build (generate + validate)
+
+```bash
+animation-engine build-production-pack \
+    --skeleton-anim assets/hero_source.anim \
+    --output-dir assets/hero_pack \
+    --profile ff10_ps2 \
+    --strict \
+    --json-report assets/hero_pack/validation_report.json
+```
+
+### Production GUI
+
+```bash
+animation-engine launch-production-gui
+```
+
+The production GUI runs full-pack generation and validation together, writes a
+pack manifest, and can optionally write a JSON validation report.
+
+### Windows standalone launcher (.bat)
+
+Run this file from the repository root on Windows:
+
+```bat
+run_animation_engine_windows.bat
+```
+
+The batch launcher creates `.venv` (if needed), installs dependencies with
+`pip install -e ".[dev]"`, and opens the production GUI.
+
 The `--strict` flag causes `generate-pack` to exit non-zero if any clip fails to generate.
 
 The `--json-report` flag writes a machine-readable JSON containing per-clip reports, style errors, and an `overall_valid` field suitable for CI integration.

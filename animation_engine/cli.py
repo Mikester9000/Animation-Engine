@@ -330,6 +330,52 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
     return 0 if all_valid else 1
 
 
+def _cmd_build_production_pack(args: argparse.Namespace) -> int:
+    """Generate and validate a full production pack in one command."""
+    parser = build_parser()
+    generate_argv = [
+        "generate-pack",
+        "--skeleton-anim",
+        str(args.skeleton_anim),
+        "--output-dir",
+        str(args.output_dir),
+        "--profile",
+        str(args.profile),
+        "--backend",
+        str(args.backend),
+        "--sample-rate",
+        str(args.sample_rate),
+    ]
+    if args.seed is not None:
+        generate_argv.extend(["--seed", str(args.seed)])
+    if args.manifest_out:
+        generate_argv.extend(["--manifest-out", str(args.manifest_out)])
+    if args.strict:
+        generate_argv.append("--strict")
+
+    generate_args = parser.parse_args(generate_argv)
+    generate_code = _cmd_generate_pack(generate_args)
+    if generate_code != 0:
+        return generate_code
+
+    manifest_path = Path(args.manifest_out) if args.manifest_out else Path(args.output_dir) / "pack_manifest.json"
+    validate_argv = ["validate-pack", "--manifest", str(manifest_path)]
+    if args.json_report:
+        validate_argv.extend(["--json-report", str(args.json_report)])
+
+    validate_args = parser.parse_args(validate_argv)
+    return _cmd_validate_pack(validate_args)
+
+
+def _cmd_launch_production_gui(args: argparse.Namespace) -> int:
+    """Launch the production pack generation GUI."""
+    del args
+    from animation_engine.gui.production_pack_gui import main as gui_main
+
+    gui_main()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     from animation_engine.integration.style_profiles import DEFAULT_STYLE_PROFILE_ID
 
@@ -434,6 +480,69 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write machine-readable JSON validation report to PATH",
     )
     validate_pack_parser.set_defaults(func=_cmd_validate_pack)
+
+    # build-production-pack command
+    build_production_pack_parser = subparsers.add_parser(
+        "build-production-pack",
+        help="Generate and validate a complete production pack in one command",
+    )
+    build_production_pack_parser.add_argument(
+        "--skeleton-anim",
+        required=True,
+        help="Source .anim file containing the skeleton",
+    )
+    build_production_pack_parser.add_argument(
+        "--output-dir",
+        required=True,
+        help="Output directory for generated pack files",
+    )
+    build_production_pack_parser.add_argument(
+        "--profile",
+        default=DEFAULT_STYLE_PROFILE_ID,
+        help="Style profile ID (e.g. ff7_ps2, ff8_ps2, ff9_ps2, ff10_ps2, ff12_ps2)",
+    )
+    build_production_pack_parser.add_argument(
+        "--backend",
+        default="procedural",
+        help="Backend name used for clip generation",
+    )
+    build_production_pack_parser.add_argument(
+        "--sample-rate",
+        type=float,
+        default=30.0,
+        help="Generated clip sample rate (FPS)",
+    )
+    build_production_pack_parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Optional deterministic seed",
+    )
+    build_production_pack_parser.add_argument(
+        "--manifest-out",
+        default=None,
+        help="Optional explicit path for copied manifest JSON",
+    )
+    build_production_pack_parser.add_argument(
+        "--json-report",
+        default=None,
+        metavar="PATH",
+        help="Write machine-readable JSON validation report to PATH",
+    )
+    build_production_pack_parser.add_argument(
+        "--strict",
+        action="store_true",
+        default=False,
+        help="Fail with non-zero exit code if any clip generation fails",
+    )
+    build_production_pack_parser.set_defaults(func=_cmd_build_production_pack)
+
+    # launch-production-gui command
+    launch_production_gui_parser = subparsers.add_parser(
+        "launch-production-gui",
+        help="Open GUI for full production pack generation + validation",
+    )
+    launch_production_gui_parser.set_defaults(func=_cmd_launch_production_gui)
 
     return parser
 
