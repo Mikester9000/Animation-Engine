@@ -73,21 +73,49 @@ class AnimationBackend(ABC):
     def supported_motion_types(self) -> tuple[str, ...]:
         """Return supported motion types."""
         return (
-            "idle",
-            "walk",
-            "run",
+            "aerial_attack",
             "attack",
-            "defend",
+            "attack_combo_1",
+            "attack_combo_2",
+            "attack_combo_3",
+            "block",
             "cast",
-            "hit_react",
+            "cast_channel",
+            "cast_release",
+            "climb_loop",
+            "climb_start",
+            "climb_stop",
+            "crouch",
+            "crouch_walk",
+            "death",
+            "defend",
             "dodge",
-            "jump_start",
-            "jump_loop",
+            "get_up",
+            "heavy_attack",
+            "hit_react",
+            "idle",
+            "idle_alt",
+            "idle_combat",
+            "interact",
             "jump_land",
-            "victory",
+            "jump_loop",
+            "jump_start",
+            "knockdown",
+            "parry",
+            "pickup",
+            "roll",
+            "run",
+            "run_start",
+            "run_stop",
+            "sprint",
+            "stagger",
+            "strafe_left",
+            "strafe_right",
             "turn_left",
             "turn_right",
-            "crouch",
+            "vault",
+            "victory",
+            "walk",
         )
 
 
@@ -310,6 +338,398 @@ class ProceduralBackend(AnimationBackend):
                     ChannelTarget.TRANSLATION,
                     duration * 0.5,
                     [0, -0.12 * amplitude_scale, 0],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        # --- New motions added in expanded taxonomy ---
+
+        elif motion_type == "idle_alt":
+            # Alternate idle with a subtle weight-shift
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.4,
+                    [0.04 * amplitude_scale, 0, 0],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "idle_combat":
+            # Combat-ready idle — slight forward lean
+            if skeleton and len(skeleton.bones) > 1:
+                spine_name = skeleton.bones[1].name
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(
+                    spine_name,
+                    ChannelTarget.ROTATION,
+                    duration * 0.5,
+                    _unit_axis_quat(0.04 * amplitude_scale, axis="x"),
+                )
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+
+        elif motion_type == "run_start":
+            # Lean into run
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, 0, 0.12 * amplitude_scale],
+                )
+
+        elif motion_type == "run_stop":
+            # Deceleration skid
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    0.0,
+                    [0, 0, 0.1 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "sprint":
+            # High-frequency run cycle
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                step_duration = duration / (8 * cadence_scale)
+                for i in range(9):
+                    t = i * step_duration
+                    if t >= duration:
+                        break
+                    y_offset = (0.18 if i % 2 == 0 else -0.18) * amplitude_scale
+                    clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0, y_offset, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, 0.18 * amplitude_scale, 0],
+                )
+
+        elif motion_type == "strafe_left":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                step_duration = duration / (4 * cadence_scale)
+                for i in range(5):
+                    t = i * step_duration
+                    if t >= duration:
+                        break
+                    z_offset = (0.08 if i % 2 == 0 else -0.08) * amplitude_scale
+                    clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [-0.1, z_offset, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [-0.1, 0.08 * amplitude_scale, 0],
+                )
+
+        elif motion_type == "strafe_right":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                step_duration = duration / (4 * cadence_scale)
+                for i in range(5):
+                    t = i * step_duration
+                    if t >= duration:
+                        break
+                    z_offset = (0.08 if i % 2 == 0 else -0.08) * amplitude_scale
+                    clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0.1, z_offset, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0.1, 0.08 * amplitude_scale, 0],
+                )
+
+        elif motion_type == "crouch_walk":
+            # Low gait — seamless loop in crouched position
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                base_y = -0.1 * amplitude_scale
+                sway = 0.04 * amplitude_scale
+                step_duration = duration / (4 * cadence_scale)
+                for i in range(5):
+                    t = i * step_duration
+                    if t >= duration:
+                        break
+                    y_offset = base_y + (sway if i % 2 == 0 else -sway)
+                    clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0, y_offset, 0])
+                # Return to the same value as frame 0 to guarantee a seamless loop.
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, base_y + sway, 0],
+                )
+
+        elif motion_type == "roll":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.5,
+                    [0.15 * amplitude_scale, -0.05 * amplitude_scale, 0.15 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "vault":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.5,
+                    [0, 0.3 * amplitude_scale, 0.2 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "climb_start":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, 0.18 * amplitude_scale, -0.05 * amplitude_scale],
+                )
+
+        elif motion_type == "climb_loop":
+            # Arm-reach cycle while climbing — seamless positional loop.
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                base_y = 0.15 * amplitude_scale
+                sway = 0.04 * amplitude_scale
+                step_duration = duration / (4 * cadence_scale)
+                for i in range(5):
+                    t = i * step_duration
+                    if t >= duration:
+                        break
+                    y_offset = base_y + (sway if i % 2 == 0 else -sway)
+                    clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0, y_offset, 0])
+                # Return to start value to guarantee a seamless loop.
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, base_y + sway, 0],
+                )
+
+        elif motion_type == "climb_stop":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    0.0,
+                    [0, 0.15 * amplitude_scale, 0],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "attack_combo_1":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.35,
+                    [-0.1 * amplitude_scale, 0, 0.2 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "attack_combo_2":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.35,
+                    [0.1 * amplitude_scale, 0, 0.22 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "attack_combo_3":
+            # Finisher — larger lunge
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.4,
+                    [0, 0.05 * amplitude_scale, 0.35 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "heavy_attack":
+            if skeleton and len(skeleton.bones) > 1:
+                spine_name = skeleton.bones[1].name
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(
+                    spine_name,
+                    ChannelTarget.ROTATION,
+                    duration * 0.5,
+                    _unit_axis_quat(0.12 * amplitude_scale, axis="x"),
+                )
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+
+        elif motion_type == "aerial_attack":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    0.0,
+                    [0, 0.2 * amplitude_scale, 0],
+                )
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.4,
+                    [0, 0.1 * amplitude_scale, 0.25 * amplitude_scale],
+                )
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, 0.2 * amplitude_scale, 0],
+                )
+
+        elif motion_type == "cast_channel":
+            if skeleton and len(skeleton.bones) > 1:
+                spine_name = skeleton.bones[1].name
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(
+                    spine_name,
+                    ChannelTarget.ROTATION,
+                    duration * 0.5,
+                    _unit_axis_quat(0.06 * amplitude_scale, axis="z"),
+                )
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+
+        elif motion_type == "cast_release":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.3,
+                    [0, 0.1 * amplitude_scale, -0.15 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "block":
+            if skeleton and len(skeleton.bones) > 1:
+                spine_name = skeleton.bones[1].name
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(
+                    spine_name,
+                    ChannelTarget.ROTATION,
+                    duration * 0.4,
+                    _unit_axis_quat(0.05 * amplitude_scale, axis="x"),
+                )
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+
+        elif motion_type == "parry":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.25,
+                    [0, 0, -0.08 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "stagger":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.15,
+                    [0.06 * amplitude_scale, 0, -0.08 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "knockdown":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.6,
+                    [0, -0.35 * amplitude_scale, -0.1 * amplitude_scale],
+                )
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, -0.35 * amplitude_scale, -0.1 * amplitude_scale],
+                )
+
+        elif motion_type == "get_up":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    0.0,
+                    [0, -0.35 * amplitude_scale, -0.1 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "death":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.7,
+                    [0, -0.4 * amplitude_scale, 0.05 * amplitude_scale],
+                )
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration,
+                    [0, -0.4 * amplitude_scale, 0.05 * amplitude_scale],
+                )
+
+        elif motion_type == "interact":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.5,
+                    [0, 0, 0.15 * amplitude_scale],
+                )
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+
+        elif motion_type == "pickup":
+            if skeleton and len(skeleton.bones) > 0:
+                root_name = skeleton.bones[0].name
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+                clip.add_keyframe(
+                    root_name,
+                    ChannelTarget.TRANSLATION,
+                    duration * 0.5,
+                    [0, -0.18 * amplitude_scale, 0.08 * amplitude_scale],
                 )
                 clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
 

@@ -17,12 +17,12 @@ consumed directly by the rendering system.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
 from ..model.model import Model
-from ..math_utils import Matrix4x4, Transform
+from ..math_utils import Matrix4x4, Transform, Vector3
 from ..animation.blend_tree import BlendTree
 from ..animation.ik_solver import IKSolver, IKChain
 from ..animation.morph_track import MorphTrack
@@ -40,6 +40,11 @@ class Animator:
     morph_tracks    : List of MorphTracks driving morph-target weights.
     skin_matrices   : (Output) Per-bone final skin matrix list, ready for GPU.
     morph_weights   : (Output) Dict of morph-target name → current weight.
+    root_motion_delta : (Output) Root-motion translation delta for the last
+                        ``update()`` call (world-space XYZ).  Consumed by the
+                        character controller each frame.
+    event_callbacks : Dict mapping event name → list of callables.  Each
+                      callable receives the event dict when the event fires.
     """
 
     def __init__(
@@ -61,13 +66,32 @@ class Animator:
         skeleton = model.skeleton
         bone_count = skeleton.bone_count if skeleton else 0
         # Each skin matrix = world_matrix * inverse_bind
-        self.skin_matrices: List[Matrix4x4] = [
-            Matrix4x4.identity() for _ in range(bone_count)
-        ]
+        self.skin_matrices: List[Matrix4x4] = [Matrix4x4.identity() for _ in range(bone_count)]
         self.morph_weights: Dict[str, float] = {}
+
+        # Root-motion output — accumulated XYZ delta since last update().
+        self.root_motion_delta: Vector3 = Vector3.zero()
+        self._prev_root_position: Optional[Vector3] = self._sample_active_root_position()
+
+        # Event dispatch table: event_name -> [callback, ...]
+        self.event_callbacks: Dict[str, List[Callable[[dict], None]]] = {}
 
         # Elapsed time in seconds (used for morph track evaluation)
         self._time: float = 0.0
+        # Track previous time to detect event crossings each frame.
+        self._prev_time: float = 0.0
+
+    def register_event_callback(self, event_name: str, callback: Callable[[dict], None]) -> None:
+        """Register *callback* to be called whenever *event_name* fires.
+
+        Parameters
+        ----------
+        event_name:
+            The animation event name to listen for (e.g. ``"footstep_left"``).
+        callback:
+            Callable receiving the event dict ``{"name", "time", "data"}``.
+        """
+        self.event_callbacks.setdefault(event_name, []).append(callback)
 
     def update(self, delta: float, context: dict = None) -> None:
         """
@@ -76,14 +100,20 @@ class Animator:
         Call this once per game tick from Game Engine for Teaching's entity
         update loop.
         """
+        self._prev_time = self._time
         self._time += delta
+
+        current_state_before = getattr(self.blend_tree, "_current_state", None)
+        next_state_before = getattr(self.blend_tree, "_next_state", None)
+        previous_local_times = {}
+        for state in (current_state_before, next_state_before):
+            if state is not None:
+                previous_local_times[state] = getattr(state, "_local_time", 0.0)
 
         # 1. Advance blend tree → per-bone FK pose
         pose: Dict[str, Transform] = self.blend_tree.update(delta, context)
 
         # 2. Apply IK overrides on top of the FK pose
-        #    IK works in world space; we build world transforms first, then
-        #    pass them to the solver which writes back corrected transforms.
         if self.ik_chains and self.model.skeleton:
             self._apply_ik(pose)
 
@@ -92,6 +122,15 @@ class Animator:
 
         # 4. Evaluate morph-target weights
         self._update_morph_weights()
+
+        # 5. Extract root-motion delta from pose (XZ translation from root bone)
+        self._extract_root_motion(pose)
+
+        # 6. Dispatch animation events that crossed this state's local timeline.
+        current_state = getattr(self.blend_tree, "_current_state", None)
+        current_local_time = getattr(current_state, "_local_time", 0.0) if current_state else 0.0
+        previous_local_time = previous_local_times.get(current_state, current_local_time)
+        self._dispatch_events(current_state, previous_local_time, current_local_time)
 
     # -- IK ------------------------------------------------------------------
 
@@ -164,9 +203,7 @@ class Animator:
         if skeleton is None:
             return
 
-        bone_transforms_list = [
-            pose.get(b.name, b.local_transform) for b in skeleton.bones
-        ]
+        bone_transforms_list = [pose.get(b.name, b.local_transform) for b in skeleton.bones]
         world_matrices = skeleton.get_world_matrices(bone_transforms_list)
         for i, bone in enumerate(skeleton.bones):
             self.skin_matrices[i] = world_matrices[i] * bone.inverse_bind
@@ -177,6 +214,101 @@ class Animator:
         """Evaluate all morph tracks at the current animation time."""
         for track in self.morph_tracks:
             self.morph_weights[track.morph_name] = track.evaluate(self._time)
+
+    # -- root motion ---------------------------------------------------------
+
+    def _sample_active_root_position(self) -> Optional[Vector3]:
+        """Return the active state's current root-bone position, if available."""
+        skeleton = self.model.skeleton
+        if skeleton is None or not skeleton.bones:
+            return None
+        state = getattr(self.blend_tree, "_current_state", None)
+        if state is None:
+            return None
+        clip = getattr(state, "clip", None)
+        if clip is None:
+            return None
+        root_name = skeleton.bones[0].name
+        local_time = getattr(state, "_local_time", 0.0)
+        return clip.evaluate_bone(root_name, local_time).position
+
+    def _extract_root_motion(self, pose: Dict[str, Transform]) -> None:
+        """Compute XYZ root-motion delta from the current pose.
+
+        The delta is derived from the root bone's translation channel.  The
+        caller (character controller) is responsible for consuming and zeroing
+        this value each frame.
+        """
+        skeleton = self.model.skeleton
+        if skeleton is None or not skeleton.bones:
+            self.root_motion_delta = Vector3.zero()
+            return
+        root_name = skeleton.bones[0].name
+        root_transform = pose.get(root_name)
+        if root_transform is not None:
+            current_root_position = root_transform.position
+            if self._prev_root_position is None:
+                self.root_motion_delta = Vector3.zero()
+            else:
+                self.root_motion_delta = current_root_position - self._prev_root_position
+            self._prev_root_position = current_root_position
+        else:
+            self.root_motion_delta = Vector3.zero()
+            self._prev_root_position = None
+
+    # -- event dispatch -------------------------------------------------------
+
+    def _dispatch_events(
+        self,
+        current_state,
+        previous_local_time: float,
+        current_local_time: float,
+    ) -> None:
+        """Fire callbacks for any animation events in the current frame window.
+
+        Checks the active clip's event list (if accessible) for events whose
+        clip-local ``time`` falls in the half-open interval
+        ``(previous_local_time, current_local_time]`` with loop-wrap handling.
+        """
+        if not self.event_callbacks:
+            return
+
+        active_clip = getattr(current_state, "clip", None) if current_state else None
+        if active_clip is None:
+            return
+
+        clip_duration = active_clip.duration
+        is_looping = bool(getattr(active_clip, "loop", False))
+        for event in active_clip.get_events():
+            t = event["time"]
+            if self._did_event_fire_this_update(
+                t, previous_local_time, current_local_time, clip_duration, is_looping
+            ):
+                callbacks = self.event_callbacks.get(event["name"], [])
+                for cb in callbacks:
+                    cb(event)
+
+    @staticmethod
+    def _did_event_fire_this_update(
+        event_time: float,
+        previous_local_time: float,
+        current_local_time: float,
+        clip_duration: float,
+        is_looping: bool,
+    ) -> bool:
+        """Return True when an event time is crossed in this update window."""
+        if not is_looping or clip_duration <= 1e-6:
+            return previous_local_time < event_time <= current_local_time
+
+        delta = current_local_time - previous_local_time
+        if delta >= clip_duration:
+            return True
+
+        prev_mod = previous_local_time % clip_duration
+        curr_mod = current_local_time % clip_duration
+        if prev_mod < curr_mod:
+            return prev_mod < event_time <= curr_mod
+        return event_time > prev_mod or event_time <= curr_mod
 
     # -- convenience ---------------------------------------------------------
 

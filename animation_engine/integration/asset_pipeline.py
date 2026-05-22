@@ -19,6 +19,7 @@ __all__ = [
     "PIPELINE_DEFAULT_SEED",
     "PIPELINE_DEFAULT_PROFILE_ID",
     "PIPELINE_GENERATION_VERSION",
+    "MANIFEST_SCHEMA_VERSION",
 ]
 
 # ---------------------------------------------------------------------------
@@ -29,7 +30,169 @@ PIPELINE_DEFAULT_BACKEND: str = "procedural"
 PIPELINE_DEFAULT_SAMPLE_RATE: float = 30.0
 PIPELINE_DEFAULT_SEED: int | None = None  # seed is forwarded to backends; the built-in procedural backend is deterministic and does not use RNG
 PIPELINE_DEFAULT_PROFILE_ID: str = DEFAULT_STYLE_PROFILE_ID
-PIPELINE_GENERATION_VERSION: int = 1  # increment when the output format changes
+PIPELINE_GENERATION_VERSION: int = 2  # v2: added semantic metadata and animation event markers
+MANIFEST_SCHEMA_VERSION: str = "2.0"
+
+# ---------------------------------------------------------------------------
+# Per-clip gameplay semantic metadata tables
+# ---------------------------------------------------------------------------
+
+# Gameplay category each motion belongs to.
+_CLIP_CATEGORY: dict[str, str] = {
+    "idle": "idle",
+    "idle_alt": "idle",
+    "idle_combat": "idle",
+    "walk": "exploration",
+    "run": "exploration",
+    "run_start": "exploration",
+    "run_stop": "exploration",
+    "sprint": "exploration",
+    "strafe_left": "exploration",
+    "strafe_right": "exploration",
+    "crouch": "exploration",
+    "crouch_walk": "exploration",
+    "turn_left": "exploration",
+    "turn_right": "exploration",
+    "jump_start": "traversal",
+    "jump_loop": "traversal",
+    "jump_land": "traversal",
+    "roll": "traversal",
+    "vault": "traversal",
+    "climb_start": "traversal",
+    "climb_loop": "traversal",
+    "climb_stop": "traversal",
+    "attack": "combat",
+    "attack_combo_1": "combat",
+    "attack_combo_2": "combat",
+    "attack_combo_3": "combat",
+    "heavy_attack": "combat",
+    "aerial_attack": "combat",
+    "cast": "combat",
+    "cast_channel": "combat",
+    "cast_release": "combat",
+    "defend": "combat",
+    "block": "combat",
+    "parry": "combat",
+    "dodge": "combat",
+    "hit_react": "reaction",
+    "stagger": "reaction",
+    "knockdown": "reaction",
+    "get_up": "reaction",
+    "death": "reaction",
+    "interact": "interaction",
+    "pickup": "interaction",
+    "victory": "idle",
+}
+
+# Root-motion policy expected for this clip at runtime.
+_CLIP_ROOT_MOTION_POLICY: dict[str, str] = {
+    "walk": "xy_only",
+    "run": "xy_only",
+    "run_start": "xy_only",
+    "run_stop": "xy_only",
+    "sprint": "xy_only",
+    "strafe_left": "xy_only",
+    "strafe_right": "xy_only",
+    "crouch_walk": "xy_only",
+    "roll": "xy_only",
+    "vault": "full",
+    "climb_start": "full",
+    "climb_loop": "full",
+    "climb_stop": "full",
+    "jump_start": "full",
+    "jump_loop": "full",
+    "jump_land": "full",
+}
+
+# Semantic interaction/gameplay tags per motion.
+_CLIP_INTERACTION_TAGS: dict[str, list[str]] = {
+    "attack": ["hit_window", "cancel_window"],
+    "attack_combo_1": ["combo_link", "cancel_window"],
+    "attack_combo_2": ["combo_link", "cancel_window"],
+    "attack_combo_3": ["combo_finisher"],
+    "heavy_attack": ["hit_window", "unbreakable"],
+    "aerial_attack": ["hit_window", "airborne"],
+    "cast": ["cast_window"],
+    "cast_channel": ["cast_lock"],
+    "cast_release": ["spell_release"],
+    "parry": ["parry_window"],
+    "dodge": ["invincibility_window"],
+    "roll": ["invincibility_window"],
+    "hit_react": ["interruptible"],
+    "stagger": ["interruptible"],
+    "knockdown": ["grounded"],
+    "get_up": ["invincibility_window"],
+    "death": ["terminal"],
+    "interact": ["context_action"],
+    "pickup": ["context_action"],
+    "jump_start": ["leave_ground"],
+    "jump_land": ["land_impact"],
+    "vault": ["parkour"],
+    "climb_start": ["climb_enter"],
+    "climb_loop": ["climb_cycle"],
+    "climb_stop": ["climb_exit"],
+    "walk": ["footstep_even"],
+    "run": ["footstep_even"],
+    "sprint": ["footstep_even"],
+    "crouch_walk": ["footstep_quiet"],
+}
+
+# Transition intent — what state this clip is expected to lead into.
+_CLIP_TRANSITION_INTENT: dict[str, str] = {
+    "idle": "entry_loop",
+    "idle_alt": "entry_loop",
+    "idle_combat": "entry_loop",
+    "walk": "locomotion_loop",
+    "run": "locomotion_loop",
+    "sprint": "locomotion_loop",
+    "run_start": "locomotion_enter",
+    "run_stop": "locomotion_exit",
+    "strafe_left": "locomotion_loop",
+    "strafe_right": "locomotion_loop",
+    "crouch": "stance_enter",
+    "crouch_walk": "locomotion_loop",
+    "turn_left": "locomotion_pivot",
+    "turn_right": "locomotion_pivot",
+    "jump_start": "airborne_enter",
+    "jump_loop": "airborne_loop",
+    "jump_land": "airborne_exit",
+    "roll": "dodge_action",
+    "vault": "traversal_action",
+    "climb_start": "climb_enter",
+    "climb_loop": "climb_loop",
+    "climb_stop": "climb_exit",
+    "attack": "attack_oneshot",
+    "attack_combo_1": "combo_step",
+    "attack_combo_2": "combo_step",
+    "attack_combo_3": "combo_finisher",
+    "heavy_attack": "attack_oneshot",
+    "aerial_attack": "attack_oneshot",
+    "cast": "spell_action",
+    "cast_channel": "spell_hold",
+    "cast_release": "spell_fire",
+    "defend": "defensive_loop",
+    "block": "defensive_loop",
+    "parry": "defensive_action",
+    "dodge": "dodge_action",
+    "hit_react": "reaction_oneshot",
+    "stagger": "reaction_oneshot",
+    "knockdown": "reaction_fall",
+    "get_up": "recovery_action",
+    "death": "terminal_action",
+    "interact": "context_action",
+    "pickup": "context_action",
+    "victory": "celebration_loop",
+}
+
+
+def _clip_semantic_metadata(motion: str) -> dict[str, Any]:
+    """Return gameplay semantic metadata fields for a motion identifier."""
+    return {
+        "locomotion_category": _CLIP_CATEGORY.get(motion, "unknown"),
+        "root_motion_policy": _CLIP_ROOT_MOTION_POLICY.get(motion, "none"),
+        "interaction_tags": _CLIP_INTERACTION_TAGS.get(motion, []),
+        "transition_intent": _CLIP_TRANSITION_INTENT.get(motion, "oneshot"),
+    }
 
 
 class AnimationPipeline:
@@ -126,6 +289,7 @@ class AnimationPipeline:
                         "motion_type": motion,
                         "duration": clip_spec.duration,
                         "sample_rate": self.sample_rate,
+                        **_clip_semantic_metadata(motion),
                     },
                     path=str(output_path),
                 )
@@ -141,7 +305,15 @@ class AnimationPipeline:
                 failed[motion] = str(exc)
 
         manifest_path = output_dir / "pack_manifest.json"
+        # Build category coverage summary for the manifest.
+        category_coverage: dict[str, list[str]] = {}
+        for entry in ordered_files:
+            m = entry["motion_type"]
+            cat = _CLIP_CATEGORY.get(m, "unknown")
+            category_coverage.setdefault(cat, []).append(m)
+
         manifest = {
+            "schema_version": MANIFEST_SCHEMA_VERSION,
             "status": "failed" if failed else "ok",
             "profile_id": profile.profile_id,
             "profile_label": profile.label,
@@ -158,6 +330,9 @@ class AnimationPipeline:
             "seed": getattr(self.backend, "seed", None),
             "sample_rate": self.sample_rate,
             "generation_version": PIPELINE_GENERATION_VERSION,
+            "gameplay_semantic": {
+                "category_coverage": category_coverage,
+            },
             "manifest_path": str(manifest_path),
         }
         with open(manifest_path, "w", encoding="utf-8") as fh:

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 __all__ = [
     "ClipSpec",
+    "MotionStyleVariants",
     "StyleProfile",
     "DEFAULT_STYLE_PROFILE_ID",
     "list_style_profiles",
@@ -21,6 +22,27 @@ class ClipSpec:
 
 
 @dataclass(frozen=True)
+class MotionStyleVariants:
+    """Per-gameplay-class cadence and amplitude modifiers applied on top of the
+    profile-level ``cadence_scale`` / ``amplitude_scale`` values.
+
+    Each value is a multiplier (1.0 = no additional adjustment).  Classes:
+
+    * **locomotion** – walk, run, sprint, strafing, crouch cycles
+    * **melee** – attack combos, heavy strike, aerial attack
+    * **magic** – cast windup, channeling, release
+    * **reaction** – hit-react, stagger, knockdown, get-up, death
+    * **traversal** – jump, roll, vault, climb sequences
+    """
+
+    locomotion: float = 1.0
+    melee: float = 1.0
+    magic: float = 1.0
+    reaction: float = 1.0
+    traversal: float = 1.0
+
+
+@dataclass(frozen=True)
 class StyleProfile:
     profile_id: str
     label: str
@@ -30,20 +52,60 @@ class StyleProfile:
     cadence_scale: float
     amplitude_scale: float
     required_clips: tuple[ClipSpec, ...]
+    motion_style_variants: MotionStyleVariants = field(default_factory=MotionStyleVariants)
 
 
 _BASE_REQUIRED_CLIPS: tuple[ClipSpec, ...] = (
+    # --- Idle / ambient ---
     ClipSpec("idle", 3.0, "calm loop"),
+    ClipSpec("idle_alt", 3.5, "secondary idle variant"),
+    ClipSpec("idle_combat", 2.0, "combat ready idle"),
+    # --- Exploration / locomotion ---
     ClipSpec("walk", 2.0, "exploration gait"),
     ClipSpec("run", 1.5, "urgent traversal"),
-    ClipSpec("attack", 1.2, "basic combat strike"),
-    ClipSpec("defend", 1.1, "guard pose"),
-    ClipSpec("cast", 1.4, "spell windup"),
-    ClipSpec("hit_react", 0.9, "damage reaction"),
-    ClipSpec("dodge", 0.8, "quick evade"),
+    ClipSpec("run_start", 0.4, "run enter"),
+    ClipSpec("run_stop", 0.5, "run exit"),
+    ClipSpec("sprint", 1.2, "full-speed dash"),
+    ClipSpec("strafe_left", 0.9, "lateral walk left"),
+    ClipSpec("strafe_right", 0.9, "lateral walk right"),
+    ClipSpec("crouch", 0.6, "crouch transition"),
+    ClipSpec("crouch_walk", 1.6, "crouch gait"),
+    ClipSpec("turn_left", 0.6, "pivot left"),
+    ClipSpec("turn_right", 0.6, "pivot right"),
+    # --- Traversal ---
     ClipSpec("jump_start", 0.4, "takeoff"),
     ClipSpec("jump_loop", 0.8, "airborne hold"),
     ClipSpec("jump_land", 0.5, "landing recovery"),
+    ClipSpec("roll", 0.6, "evasive roll"),
+    ClipSpec("vault", 0.5, "obstacle vault"),
+    ClipSpec("climb_start", 0.5, "climb initiate"),
+    ClipSpec("climb_loop", 1.2, "climb cycle"),
+    ClipSpec("climb_stop", 0.5, "dismount"),
+    # --- Combat / offense ---
+    ClipSpec("attack", 1.2, "basic combat strike"),
+    ClipSpec("attack_combo_1", 1.0, "combo chain step 1"),
+    ClipSpec("attack_combo_2", 1.0, "combo chain step 2"),
+    ClipSpec("attack_combo_3", 1.1, "combo chain step 3 finisher"),
+    ClipSpec("heavy_attack", 1.4, "charged heavy strike"),
+    ClipSpec("aerial_attack", 0.9, "airborne strike"),
+    ClipSpec("cast", 1.4, "spell windup"),
+    ClipSpec("cast_channel", 1.2, "spell channeling hold"),
+    ClipSpec("cast_release", 0.8, "spell release burst"),
+    # --- Combat / defense ---
+    ClipSpec("defend", 1.1, "guard pose"),
+    ClipSpec("block", 1.0, "sustained block pose"),
+    ClipSpec("parry", 0.6, "timed parry"),
+    ClipSpec("dodge", 0.8, "quick evade"),
+    # --- Reactions ---
+    ClipSpec("hit_react", 0.9, "damage reaction"),
+    ClipSpec("stagger", 0.7, "hit stagger"),
+    ClipSpec("knockdown", 1.0, "knockdown fall"),
+    ClipSpec("get_up", 0.9, "recover from knockdown"),
+    ClipSpec("death", 1.8, "defeat animation"),
+    # --- Interactions ---
+    ClipSpec("interact", 0.8, "environment interaction"),
+    ClipSpec("pickup", 0.7, "pick up item"),
+    # --- Celebration ---
     ClipSpec("victory", 2.5, "post-combat celebration"),
 )
 
@@ -78,6 +140,13 @@ _STYLE_PROFILES: dict[str, StyleProfile] = {
         cadence_scale=0.96,
         amplitude_scale=0.92,
         required_clips=_BASE_REQUIRED_CLIPS,
+        motion_style_variants=MotionStyleVariants(
+            locomotion=0.94,
+            melee=0.98,
+            magic=1.02,
+            reaction=0.96,
+            traversal=0.95,
+        ),
     ),
     "ff8_ps2": StyleProfile(
         profile_id="ff8_ps2",
@@ -88,6 +157,13 @@ _STYLE_PROFILES: dict[str, StyleProfile] = {
         cadence_scale=1.0,
         amplitude_scale=0.95,
         required_clips=_BASE_REQUIRED_CLIPS,
+        motion_style_variants=MotionStyleVariants(
+            locomotion=1.0,
+            melee=1.02,
+            magic=1.05,
+            reaction=0.98,
+            traversal=1.0,
+        ),
     ),
     "ff9_ps2": StyleProfile(
         profile_id="ff9_ps2",
@@ -98,6 +174,13 @@ _STYLE_PROFILES: dict[str, StyleProfile] = {
         cadence_scale=1.02,
         amplitude_scale=1.0,
         required_clips=_BASE_REQUIRED_CLIPS,
+        motion_style_variants=MotionStyleVariants(
+            locomotion=1.0,
+            melee=1.05,
+            magic=1.08,
+            reaction=1.02,
+            traversal=1.04,
+        ),
     ),
     "ff10_ps2": StyleProfile(
         profile_id="ff10_ps2",
@@ -108,6 +191,13 @@ _STYLE_PROFILES: dict[str, StyleProfile] = {
         cadence_scale=1.08,
         amplitude_scale=1.05,
         required_clips=_BASE_REQUIRED_CLIPS,
+        motion_style_variants=MotionStyleVariants(
+            locomotion=1.06,
+            melee=1.08,
+            magic=1.12,
+            reaction=1.04,
+            traversal=1.06,
+        ),
     ),
     "ff12_ps2": StyleProfile(
         profile_id="ff12_ps2",
@@ -118,6 +208,13 @@ _STYLE_PROFILES: dict[str, StyleProfile] = {
         cadence_scale=1.1,
         amplitude_scale=0.98,
         required_clips=_BASE_REQUIRED_CLIPS,
+        motion_style_variants=MotionStyleVariants(
+            locomotion=1.08,
+            melee=1.0,
+            magic=1.02,
+            reaction=1.0,
+            traversal=1.05,
+        ),
     ),
 }
 

@@ -19,6 +19,7 @@ from animation_engine.integration import (
     get_style_profile,
     list_style_profiles,
 )
+from animation_engine.integration.asset_pipeline import PIPELINE_GENERATION_VERSION
 from animation_engine.io import AnimExporter, AnimImporter
 from animation_engine.model import Model, Skeleton
 from animation_engine.qa import ClipValidator, LoopAnalyzer, SkeletonValidator, StyleValidator
@@ -111,7 +112,7 @@ def test_pipeline_generates_anim_files(tmp_path):
     assert manifest["generated"] == len(profile.required_clips)
     assert manifest["backend_name"] == "procedural"
     assert manifest["seed"] is None
-    assert manifest["generation_version"] == 1
+    assert manifest["generation_version"] == PIPELINE_GENERATION_VERSION
     assert set(manifest["files"]) == {clip.motion_type for clip in profile.required_clips}
     assert [entry["motion_type"] for entry in manifest["ordered_files"]] == [
         clip.motion_type for clip in profile.required_clips
@@ -352,7 +353,9 @@ def test_style_validator_detects_manifest_art_direction_mismatch():
         "visual_target": "wrong",
         "gameplay_target": profile.gameplay_target,
         "reference_titles": list(profile.reference_titles),
-        "files": {clip.motion_type: f"/tmp/{clip.motion_type}.anim" for clip in profile.required_clips},
+        "files": {
+            clip.motion_type: f"/tmp/{clip.motion_type}.anim" for clip in profile.required_clips
+        },
     }
     report = StyleValidator().validate_pack(manifest)
     assert not report.is_valid
@@ -370,7 +373,9 @@ def test_style_validator_detects_clip_metadata_mismatch():
         "required_clips": [clip.motion_type for clip in profile.required_clips],
         "expected": len(profile.required_clips),
         "generated": len(profile.required_clips),
-        "files": {clip.motion_type: f"/tmp/{clip.motion_type}.anim" for clip in profile.required_clips},
+        "files": {
+            clip.motion_type: f"/tmp/{clip.motion_type}.anim" for clip in profile.required_clips
+        },
     }
     clip_metadata = {
         clip.motion_type: {
@@ -443,9 +448,7 @@ def test_pipeline_byte_stable_output_same_inputs(tmp_path):
         manifest = pipeline.generate_all(str(out_dir), skel)
         assert manifest["generation_version"] == PIPELINE_GENERATION_VERSION
         return {
-            entry["motion_type"]: hashlib.md5(
-                Path(entry["path"]).read_bytes()
-            ).hexdigest()
+            entry["motion_type"]: hashlib.md5(Path(entry["path"]).read_bytes()).hexdigest()
             for entry in manifest["ordered_files"]
         }
 
@@ -453,3 +456,368 @@ def test_pipeline_byte_stable_output_same_inputs(tmp_path):
     hashes_b = _run(tmp_path / "run_b")
     # MD5 is used here for byte-content comparison only, not for security.
     assert hashes_a == hashes_b, "Same inputs must produce byte-identical .anim files"
+
+
+# ===========================================================================
+# Task 11 – Animation event markers: clip serialisation round-trip
+# ===========================================================================
+
+
+def test_animation_clip_event_add_and_get():
+    """Events can be added and retrieved sorted by time."""
+    clip = AnimationClip("test")
+    clip.add_event("footstep_left", 0.5, {"foot": "left"})
+    clip.add_event("hit_window_open", 0.2)
+    clip.add_event("footstep_right", 0.9, {"foot": "right"})
+
+    all_events = clip.get_events()
+    assert len(all_events) == 3
+    assert [e["time"] for e in all_events] == [0.2, 0.5, 0.9]
+
+    footsteps = clip.get_events("footstep_left")
+    assert len(footsteps) == 1
+    assert footsteps[0]["data"] == {"foot": "left"}
+
+
+def test_animation_clip_events_round_trip_via_dict():
+    """Events survive to_dict / from_dict serialisation."""
+    clip = AnimationClip("evented")
+    clip.add_event("cast_release", 1.2, {"spell_id": 7})
+    clip.add_event("footstep_left", 0.4)
+
+    restored = AnimationClip.from_dict(clip.to_dict())
+
+    events = restored.get_events()
+    assert len(events) == 2
+    assert events[0]["name"] == "footstep_left"
+    assert events[1]["name"] == "cast_release"
+    assert events[1]["data"] == {"spell_id": 7}
+
+
+def test_animation_clip_events_round_trip_via_anim_format(tmp_path):
+    """Events survive export / import through the .anim file format."""
+    clip = AnimationClip("evented_anim")
+    clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+    clip.add_keyframe("root", ChannelTarget.TRANSLATION, 1.0, [0, 0, 0])
+    clip.add_event("footstep_left", 0.25, {"foot": "left"})
+    clip.add_event("hit_window_open", 0.5)
+
+    model = Model("evented_model")
+    model.skeleton = _make_skeleton()
+    path = tmp_path / "evented.anim"
+    AnimExporter().export(model, clips=[clip], metadata={"motion_type": "walk"}, path=str(path))
+    _, loaded_clips, _ = AnimImporter().import_file(str(path))
+    assert loaded_clips, "No clips loaded from .anim file"
+    events = loaded_clips[0].get_events()
+    assert len(events) == 2
+    assert events[0]["name"] == "footstep_left"
+    assert events[0]["data"] == {"foot": "left"}
+    assert events[1]["name"] == "hit_window_open"
+
+
+def test_animation_clip_no_events_omitted_from_dict():
+    """to_dict omits 'events' key when there are no events."""
+    clip = AnimationClip("no_events")
+    d = clip.to_dict()
+    assert "events" not in d
+
+
+# ===========================================================================
+# Task 12 – Runtime event dispatch and root-motion channel
+# ===========================================================================
+
+
+def _make_animator_with_events():
+    """Return an Animator whose active clip contains two footstep events."""
+    from animation_engine.runtime.animator import Animator
+    from animation_engine.animation.blend_tree import BlendTree, BlendState
+
+    clip = AnimationClip("run_cycle", fps=30.0, loop=True)
+    clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+    clip.add_keyframe("root", ChannelTarget.TRANSLATION, 1.0, [0, 0, 0])
+    clip.add_event("footstep_left", 0.25)
+    clip.add_event("footstep_right", 0.75)
+
+    bone_names = ["root", "spine_01"]
+    bt = BlendTree(bone_names)
+    bt.add_state(BlendState("run", clip))
+    bt.set_initial_state("run")
+
+    model = Model("animator_model")
+    model.skeleton = _make_skeleton()
+    return Animator(model, bt)
+
+
+def test_animator_event_callback_fires():
+    """Callback fires when animation advances past the event time."""
+    animator = _make_animator_with_events()
+
+    fired = []
+    animator.register_event_callback("footstep_left", lambda ev: fired.append(ev))
+
+    animator.update(0.3)  # past 0.25
+    assert len(fired) == 1
+    assert fired[0]["name"] == "footstep_left"
+
+
+def test_animator_event_callback_does_not_fire_before_time():
+    """Callback does not fire when animation has not yet reached the event."""
+    animator = _make_animator_with_events()
+
+    fired = []
+    animator.register_event_callback("footstep_left", lambda ev: fired.append(ev))
+
+    animator.update(0.1)  # before 0.25
+    assert len(fired) == 0
+
+
+def test_animator_event_callback_fires_exactly_on_time():
+    """Callback fires when current_time equals the event time exactly."""
+    animator = _make_animator_with_events()
+
+    fired = []
+    animator.register_event_callback("footstep_right", lambda ev: fired.append(ev))
+
+    animator.update(0.75)
+    assert len(fired) == 1
+
+
+def test_animator_event_callback_repeats_on_loop_cycles():
+    """Looping clip events continue firing on subsequent cycles."""
+    animator = _make_animator_with_events()
+
+    fired = []
+    animator.register_event_callback("footstep_left", lambda ev: fired.append(ev))
+
+    animator.update(0.3)  # first cycle crosses 0.25
+    animator.update(1.0)  # second cycle crosses 0.25 again
+    assert len(fired) == 2
+
+
+def test_animator_root_motion_delta_is_vector3():
+    """root_motion_delta attribute is a Vector3 after each update."""
+    from animation_engine.math_utils import Vector3
+
+    animator = _make_animator_with_events()
+    animator.update(0.1)
+    assert isinstance(animator.root_motion_delta, Vector3)
+
+
+def test_animator_root_motion_delta_is_per_frame_delta():
+    """root_motion_delta reports frame-to-frame movement, not absolute position."""
+    from animation_engine.animation.blend_tree import BlendTree, BlendState
+    from animation_engine.math_utils import Vector3
+    from animation_engine.runtime.animator import Animator
+
+    clip = AnimationClip("root_motion", fps=30.0, loop=False)
+    clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+    clip.add_keyframe("root", ChannelTarget.TRANSLATION, 1.0, [2, 0, 0])
+
+    bt = BlendTree(["root", "spine_01"])
+    bt.add_state(BlendState("move", clip))
+    bt.set_initial_state("move")
+
+    model = Model("root_motion_model")
+    model.skeleton = _make_skeleton()
+    animator = Animator(model, bt)
+
+    animator.update(0.25)
+    assert animator.root_motion_delta == Vector3(0.5, 0.0, 0.0)
+
+    animator.update(0.25)
+    assert animator.root_motion_delta == Vector3(0.5, 0.0, 0.0)
+
+
+# ===========================================================================
+# Task 17 – Expanded clip set, semantic metadata, coverage / continuity gates
+# ===========================================================================
+
+_ALL_PROFILE_IDS = ["ff7_ps2", "ff8_ps2", "ff9_ps2", "ff10_ps2", "ff12_ps2"]
+
+
+def test_expanded_clip_taxonomy_has_43_motions():
+    """Every built-in profile requires exactly 43 clip types."""
+    for pid in _ALL_PROFILE_IDS:
+        profile = get_style_profile(pid)
+        assert (
+            len(profile.required_clips) == 43
+        ), f"Profile {pid} has {len(profile.required_clips)} clips, expected 43"
+
+
+def test_procedural_backend_supports_all_required_motions():
+    """ProceduralBackend.supported_motion_types() covers every clip in every profile."""
+    from animation_engine.backend import ProceduralBackend
+
+    supported = set(ProceduralBackend().supported_motion_types())
+    for pid in _ALL_PROFILE_IDS:
+        profile = get_style_profile(pid)
+        for clip_def in profile.required_clips:
+            assert (
+                clip_def.motion_type in supported
+            ), f"Profile {pid}: motion '{clip_def.motion_type}' not in ProceduralBackend"
+
+
+def test_pipeline_manifest_includes_schema_version(tmp_path):
+    """Generated manifest contains schema_version matching MANIFEST_SCHEMA_VERSION."""
+    from animation_engine.integration.asset_pipeline import MANIFEST_SCHEMA_VERSION
+
+    skel = _make_skeleton()
+    pipeline = AnimationPipeline(profile_id="ff10_ps2")
+    manifest = pipeline.generate_all(tmp_path, skel)
+    assert manifest.get("schema_version") == MANIFEST_SCHEMA_VERSION
+
+
+def test_pipeline_manifest_includes_gameplay_semantic(tmp_path):
+    """Generated manifest includes gameplay_semantic with adequate category coverage."""
+    skel = _make_skeleton()
+    pipeline = AnimationPipeline(profile_id="ff10_ps2")
+    manifest = pipeline.generate_all(tmp_path, skel)
+
+    assert "gameplay_semantic" in manifest
+    cov = manifest["gameplay_semantic"].get("category_coverage", {})
+    # Values are lists of motion type names.
+    assert len(cov.get("exploration", [])) >= 3
+    assert len(cov.get("combat", [])) >= 3
+    assert len(cov.get("traversal", [])) >= 2
+    assert len(cov.get("reaction", [])) >= 2
+
+
+def test_pipeline_clip_metadata_includes_semantic_fields(tmp_path):
+    """Each generated .anim file carries the new semantic metadata fields."""
+    skel = _make_skeleton()
+    pipeline = AnimationPipeline(profile_id="ff10_ps2")
+    manifest = pipeline.generate_all(tmp_path, skel)
+
+    for entry in manifest["ordered_files"]:
+        _, _, _, meta = AnimImporter().import_file(entry["path"], include_metadata=True)
+        assert meta is not None, f"{entry['motion_type']} has no metadata"
+        assert "locomotion_category" in meta, f"{entry['motion_type']} missing locomotion_category"
+        assert "root_motion_policy" in meta, f"{entry['motion_type']} missing root_motion_policy"
+        assert "interaction_tags" in meta, f"{entry['motion_type']} missing interaction_tags"
+        assert "transition_intent" in meta, f"{entry['motion_type']} missing transition_intent"
+
+
+def test_style_validator_category_coverage_pass(tmp_path):
+    """StyleValidator passes category coverage for a fully generated pack."""
+    skel = _make_skeleton()
+    pipeline = AnimationPipeline(profile_id="ff10_ps2")
+    manifest = pipeline.generate_all(tmp_path, skel)
+
+    report = StyleValidator().validate_pack(manifest)
+    coverage_errors = [e for e in report.errors if "insufficient coverage" in e]
+    assert not coverage_errors, f"Unexpected coverage errors: {coverage_errors}"
+
+
+def test_style_validator_category_coverage_fail():
+    """StyleValidator raises coverage errors when key categories are absent."""
+    profile = get_style_profile("ff10_ps2")
+    # Only idle/interaction/exploration motions — no combat or reaction
+    thin_clips = [
+        "idle",
+        "idle_alt",
+        "idle_combat",
+        "interact",
+        "pickup",
+        "victory",
+        "walk",
+        "run",
+        "sprint",
+        "turn_left",
+        "turn_right",
+    ]
+    manifest = {
+        "profile_id": "ff10_ps2",
+        "status": "ok",
+        "visual_target": profile.visual_target,
+        "gameplay_target": profile.gameplay_target,
+        "reference_titles": list(profile.reference_titles),
+        "files": {m: f"/tmp/{m}.anim" for m in thin_clips},
+    }
+    report = StyleValidator().validate_pack(manifest)
+    coverage_errors = [e for e in report.errors if "insufficient coverage" in e]
+    assert coverage_errors, "Expected coverage errors but got none"
+    categories_reported = {e.split("'")[1] for e in coverage_errors}
+    assert "combat" in categories_reported
+
+
+def test_style_validator_transition_continuity_fail():
+    """StyleValidator errors when a transition group is only partially present."""
+    profile = get_style_profile("ff10_ps2")
+    all_motion_types = [clip.motion_type for clip in profile.required_clips]
+    # Remove attack_combo_2 and attack_combo_3 to break the combo group
+    partial = [m for m in all_motion_types if m not in ("attack_combo_2", "attack_combo_3")]
+    manifest = {
+        "profile_id": "ff10_ps2",
+        "status": "ok",
+        "visual_target": profile.visual_target,
+        "gameplay_target": profile.gameplay_target,
+        "reference_titles": list(profile.reference_titles),
+        "files": {m: f"/tmp/{m}.anim" for m in partial},
+    }
+    report = StyleValidator().validate_pack(manifest)
+    continuity_errors = [e for e in report.errors if "Transition continuity" in e]
+    assert continuity_errors, "Expected transition continuity error but got none"
+
+
+def test_cli_validate_pack_json_report(tmp_path):
+    """--json-report writes a machine-readable JSON file."""
+    skel = _make_skeleton()
+    pipeline = AnimationPipeline(profile_id="ff10_ps2")
+    manifest = pipeline.generate_all(tmp_path / "pack", skel)
+
+    parser = build_parser()
+    report_path = tmp_path / "report.json"
+    validate_args = parser.parse_args(
+        [
+            "validate-pack",
+            "--manifest",
+            manifest["manifest_path"],
+            "--json-report",
+            str(report_path),
+        ]
+    )
+    ret = _cmd_validate_pack(validate_args)
+    assert ret == 0
+    assert report_path.exists()
+    data = json.loads(report_path.read_text())
+    assert "overall_valid" in data
+    assert "style_report" in data
+    assert "errors" in data["style_report"]
+    assert "clips" in data
+
+
+def test_cli_generate_pack_strict_succeeds_for_valid_profile(tmp_path):
+    """--strict exits 0 when all clips generate successfully."""
+    source_anim = tmp_path / "source.anim"
+    model = Model("source")
+    model.skeleton = _make_skeleton()
+    AnimExporter().export(model, [], path=str(source_anim))
+
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "generate-pack",
+            "--skeleton-anim",
+            str(source_anim),
+            "--output-dir",
+            str(tmp_path / "pack"),
+            "--profile",
+            "ff10_ps2",
+            "--strict",
+        ]
+    )
+    assert _cmd_generate_pack(args) == 0
+
+
+def test_motion_style_variants_exported_on_all_profiles():
+    """Every built-in profile exposes MotionStyleVariants with positive cadence values."""
+    from animation_engine.integration import MotionStyleVariants
+
+    cadence_fields = ("locomotion", "melee", "magic", "reaction", "traversal")
+    for pid in _ALL_PROFILE_IDS:
+        profile = get_style_profile(pid)
+        variants = profile.motion_style_variants
+        assert isinstance(variants, MotionStyleVariants), f"{pid} missing MotionStyleVariants"
+        for field in cadence_fields:
+            val = getattr(variants, field)
+            assert val > 0, f"{pid}.{field} = {val} (must be > 0)"
