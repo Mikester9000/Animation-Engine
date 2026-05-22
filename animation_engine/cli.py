@@ -358,7 +358,11 @@ def _cmd_build_production_pack(args: argparse.Namespace) -> int:
     if generate_code != 0:
         return generate_code
 
-    manifest_path = Path(args.manifest_out) if args.manifest_out else Path(args.output_dir) / "pack_manifest.json"
+    manifest_path = (
+        Path(args.manifest_out)
+        if args.manifest_out
+        else Path(args.output_dir) / "pack_manifest.json"
+    )
     validate_argv = ["validate-pack", "--manifest", str(manifest_path)]
     if args.json_report:
         validate_argv.extend(["--json-report", str(args.json_report)])

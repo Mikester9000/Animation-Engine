@@ -93,9 +93,7 @@ class ProductionPackGUI:
         )
         backend_combo.grid(row=0, column=3, sticky="w", pady=4)
 
-        tk.Label(options, text="Sample Rate").grid(
-            row=1, column=0, sticky="w", padx=(0, 6), pady=4
-        )
+        tk.Label(options, text="Sample Rate").grid(row=1, column=0, sticky="w", padx=(0, 6), pady=4)
         tk.Entry(options, textvariable=self.sample_rate_var, width=19).grid(
             row=1, column=1, sticky="w", pady=4
         )
@@ -159,7 +157,9 @@ class ProductionPackGUI:
         skeleton_anim = self.skeleton_path_var.get().strip()
         output_dir = self.output_dir_var.get().strip()
         if not skeleton_anim or not output_dir:
-            messagebox.showerror("Missing Input", "Skeleton .anim and output directory are required.")
+            messagebox.showerror(
+                "Missing Input", "Skeleton .anim and output directory are required."
+            )
             return
         if not Path(skeleton_anim).exists():
             messagebox.showerror("Invalid Path", f"Skeleton file does not exist:\n{skeleton_anim}")
@@ -207,7 +207,9 @@ class ProductionPackGUI:
                     exit_code = generate_code
                 else:
                     manifest_path = (
-                        Path(manifest_out) if manifest_out else Path(self.output_dir_var.get().strip()) / "pack_manifest.json"
+                        Path(manifest_out)
+                        if manifest_out
+                        else Path(self.output_dir_var.get().strip()) / "pack_manifest.json"
                     )
                     validate_argv = ["validate-pack", "--manifest", str(manifest_path)]
                     json_report = self.json_report_var.get().strip()
@@ -245,4 +247,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
