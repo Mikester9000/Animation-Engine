@@ -60,6 +60,12 @@ class AnimationClip:
         """
         self._events.append({"name": name, "time": float(time), "data": data or {}})
 
+    def remove_event_at_index(self, index: int) -> None:
+        """Remove the event at *index* (into the time-sorted event list)."""
+        sorted_events = sorted(self._events, key=lambda e: e["time"])
+        if 0 <= index < len(sorted_events):
+            self._events.remove(sorted_events[index])
+
     def get_events(self, name: str | None = None) -> List[dict]:
         """Return all events, optionally filtered by *name*.
 

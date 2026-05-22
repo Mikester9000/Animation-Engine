@@ -717,14 +717,7 @@ class AnimationEditor:
         if not sel:
             return
         idx = sel[0]
-        events = self.active_clip.get_events()
-        if idx < len(events):
-            ev = events[idx]
-            # Rebuild events list without the selected entry
-            remaining = [e for i, e in enumerate(events) if i != idx]
-            self.active_clip._events.clear()
-            for e in remaining:
-                self.active_clip.add_event(e["name"], e["time"], e.get("data") or {})
+        self.active_clip.remove_event_at_index(idx)
         self._refresh_event_list()
         self._redraw_timeline()
 
