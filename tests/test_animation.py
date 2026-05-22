@@ -163,6 +163,15 @@ class TestAnimationClip:
         assert clip2.name == "walk"
         assert len(clip2.channels) == 2  # translation + rotation channels
 
+    def test_remove_event_at_index_uses_sorted_identity(self):
+        clip = AnimationClip("events")
+        clip.add_event("dup", 1.0, {"v": 1})
+        first = clip._events[-1]
+        clip.add_event("dup", 1.0, {"v": 1})
+        clip.remove_event_at_index(1)
+        assert len(clip._events) == 1
+        assert clip._events[0] is first
+
 
 # ---------------------------------------------------------------------------
 # BlendTree

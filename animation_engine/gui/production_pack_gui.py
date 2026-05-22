@@ -169,10 +169,21 @@ class ProductionPackGUI:
         self.run_button.configure(state=tk.DISABLED)
         self.status_var.set("Running...")
         self.log_text.delete("1.0", tk.END)
-        worker = threading.Thread(target=self._run_pipeline_worker, daemon=True)
+        snapshot = {
+            "skeleton_anim": skeleton_anim,
+            "output_dir": output_dir,
+            "profile": self.profile_var.get().strip(),
+            "backend": self.backend_var.get().strip(),
+            "sample_rate": self.sample_rate_var.get().strip(),
+            "seed": self.seed_var.get().strip(),
+            "manifest_out": self.manifest_out_var.get().strip(),
+            "json_report": self.json_report_var.get().strip(),
+            "strict": bool(self.strict_var.get()),
+        }
+        worker = threading.Thread(target=self._run_pipeline_worker, args=(snapshot,), daemon=True)
         worker.start()
 
-    def _run_pipeline_worker(self) -> None:
+    def _run_pipeline_worker(self, snapshot: dict[str, str | bool]) -> None:
         parser = build_parser()
         output_capture = io.StringIO()
         exit_code = 1
@@ -181,23 +192,23 @@ class ProductionPackGUI:
             generate_argv = [
                 "generate-pack",
                 "--skeleton-anim",
-                self.skeleton_path_var.get().strip(),
+                str(snapshot["skeleton_anim"]),
                 "--output-dir",
-                self.output_dir_var.get().strip(),
+                str(snapshot["output_dir"]),
                 "--profile",
-                self.profile_var.get().strip(),
+                str(snapshot["profile"]),
                 "--backend",
-                self.backend_var.get().strip(),
+                str(snapshot["backend"]),
                 "--sample-rate",
-                self.sample_rate_var.get().strip(),
+                str(snapshot["sample_rate"]),
             ]
-            seed_value = self.seed_var.get().strip()
+            seed_value = str(snapshot["seed"])
             if seed_value:
                 generate_argv.extend(["--seed", seed_value])
-            manifest_out = self.manifest_out_var.get().strip()
+            manifest_out = str(snapshot["manifest_out"])
             if manifest_out:
                 generate_argv.extend(["--manifest-out", manifest_out])
-            if self.strict_var.get():
+            if bool(snapshot["strict"]):
                 generate_argv.append("--strict")
 
             with redirect_stdout(output_capture):
@@ -209,10 +220,10 @@ class ProductionPackGUI:
                     manifest_path = (
                         Path(manifest_out)
                         if manifest_out
-                        else Path(self.output_dir_var.get().strip()) / "pack_manifest.json"
+                        else Path(str(snapshot["output_dir"])) / "pack_manifest.json"
                     )
                     validate_argv = ["validate-pack", "--manifest", str(manifest_path)]
-                    json_report = self.json_report_var.get().strip()
+                    json_report = str(snapshot["json_report"])
                     if json_report:
                         validate_argv.extend(["--json-report", json_report])
                     validate_args = parser.parse_args(validate_argv)

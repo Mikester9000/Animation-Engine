@@ -850,7 +850,7 @@ private:
         if (j.contains("events")) {
             for (std::size_t i = 0; i < j["events"].size(); ++i) {
                 const auto& ev = j["events"][i];
-                AE_AnimClip::Event e;
+                AE_AnimClip::Event e{};
                 if (ev.contains("name")) e.name = ev["name"].asString();
                 if (ev.contains("time")) e.time = ev["time"].asFloat();
                 c.events.push_back(e);

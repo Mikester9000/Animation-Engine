@@ -29,6 +29,13 @@ def test_playback_step_clamps_and_stops_when_not_looping() -> None:
     assert state.is_playing is False
 
 
+def test_playback_step_noops_when_speed_non_positive() -> None:
+    state = PlaybackState(time_seconds=0.5, speed=0.0, is_playing=True)
+    state.step(0.25, duration_seconds=1.0, loop=True)
+    assert state.time_seconds == 0.5
+    assert state.is_playing is True
+
+
 def test_merge_recent_files_deduplicates_and_limits() -> None:
     recent = ["/a.anim", "/b.anim", "/c.anim"]
     merged = merge_recent_files(recent, "/b.anim", limit=3)

@@ -64,7 +64,11 @@ class AnimationClip:
         """Remove the event at *index* (into the time-sorted event list)."""
         sorted_events = sorted(self._events, key=lambda e: e["time"])
         if 0 <= index < len(sorted_events):
-            self._events.remove(sorted_events[index])
+            event_to_remove = sorted_events[index]
+            for i, event in enumerate(self._events):
+                if event is event_to_remove:
+                    del self._events[i]
+                    break
 
     def get_events(self, name: str | None = None) -> List[dict]:
         """Return all events, optionally filtered by *name*.
