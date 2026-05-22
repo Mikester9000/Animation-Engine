@@ -42,10 +42,9 @@ class PlaybackState:
         """Advance playback and return updated time."""
         if not self.is_playing:
             return self.time_seconds
-        scaled_dt = max(0.0, dt_seconds)
-        if scaled_dt == 0.0 or self.speed <= 0.0:
+        if dt_seconds <= 0.0 or self.speed <= 0.0:
             return self.time_seconds
-        scaled_dt *= self.speed
+        scaled_dt = dt_seconds * self.speed
         next_time = self.time_seconds + scaled_dt
         if duration_seconds > 0.0:
             if loop:
