@@ -290,6 +290,36 @@ class AnimationEditor:
             tk.Entry(row, textvariable=var, bg="#333", fg=TEXT_COLOR,
                      insertbackground=TEXT_COLOR, relief=tk.FLAT, width=10).pack(side=tk.LEFT, padx=2)
 
+        # Events section
+        sep2 = tk.Frame(parent, bg=GRID_COLOR, height=1)
+        sep2.pack(fill=tk.X, padx=4, pady=4)
+        tk.Label(parent, text="Events", bg=BG_COLOR, fg=ACCENT_COLOR,
+                 font=("Helvetica", 9, "bold")).pack(fill=tk.X, padx=4)
+
+        ev_fields_row = tk.Frame(parent, bg=BG_COLOR)
+        ev_fields_row.pack(fill=tk.X, padx=4, pady=1)
+        self._ev_name_var = tk.StringVar()
+        self._ev_time_var = tk.StringVar()
+        tk.Label(ev_fields_row, text="Name:", bg=BG_COLOR, fg=TEXT_COLOR, width=6, anchor="e").pack(side=tk.LEFT)
+        tk.Entry(ev_fields_row, textvariable=self._ev_name_var, bg="#333", fg=TEXT_COLOR,
+                 insertbackground=TEXT_COLOR, relief=tk.FLAT, width=10).pack(side=tk.LEFT, padx=2)
+        tk.Label(ev_fields_row, text="t:", bg=BG_COLOR, fg=TEXT_COLOR).pack(side=tk.LEFT)
+        tk.Entry(ev_fields_row, textvariable=self._ev_time_var, bg="#333", fg=TEXT_COLOR,
+                 insertbackground=TEXT_COLOR, relief=tk.FLAT, width=5).pack(side=tk.LEFT, padx=2)
+
+        ev_btn_row = tk.Frame(parent, bg=BG_COLOR)
+        ev_btn_row.pack(fill=tk.X, padx=4, pady=2)
+        tk.Button(ev_btn_row, text="Add Event", bg=ACCENT_COLOR, fg="#111",
+                  relief=tk.FLAT, command=self._add_event).pack(side=tk.LEFT, padx=2)
+        tk.Button(ev_btn_row, text="Remove", bg="#555", fg=TEXT_COLOR,
+                  relief=tk.FLAT, command=self._remove_selected_event).pack(side=tk.LEFT, padx=2)
+
+        self._event_listbox = tk.Listbox(
+            parent, bg="#252525", fg=TEXT_COLOR, selectbackground=ACCENT_COLOR,
+            relief=tk.FLAT, height=5, font=("Helvetica", 8),
+        )
+        self._event_listbox.pack(fill=tk.X, padx=4, pady=2)
+
     def _build_timeline(self, parent: tk.Frame) -> None:
         """Build the scrollable timeline strip."""
         tk.Label(parent, text="Timeline", bg="#1e1e1e", fg=ACCENT_COLOR,
@@ -375,6 +405,18 @@ class AnimationEditor:
         c.create_line(px, 0, px, height, fill=PLAYHEAD_COLOR, width=2)
         c.create_polygon(px - 6, 0, px + 6, 0, px, 10, fill=PLAYHEAD_COLOR)
 
+        # Event markers — drawn above the ruler as small downward triangles
+        if self.active_clip:
+            for ev in self.active_clip.get_events():
+                ex = HEADER_WIDTH + ev["time"] * TIMELINE_PX_PER_SEC
+                r = 6
+                c.create_polygon(
+                    ex - r, 0, ex + r, 0, ex, r * 2,
+                    fill="#ff8800", outline="#fff", width=1,
+                )
+                c.create_text(ex, r * 2 + 2, text=ev["name"],
+                              fill="#ff8800", anchor="n", font=("Helvetica", 6))
+
     # -----------------------------------------------------------------------
     # Document management
     # -----------------------------------------------------------------------
@@ -434,6 +476,7 @@ class AnimationEditor:
         if self.model and self.model.skeleton:
             self._populate_bone_tree("", self.model.skeleton, -1)
 
+        self._refresh_event_list()
         self._redraw_timeline()
 
     def _populate_bone_tree(self, parent_id: str, skel: Skeleton, parent_bone_idx: int) -> None:
@@ -648,6 +691,53 @@ class AnimationEditor:
             self.model.skeleton.compute_bind_pose()
             self._refresh_ui()
 
+    def _add_event(self) -> None:
+        """Add a timeline event marker to the active clip."""
+        if not self.active_clip:
+            messagebox.showinfo("Add Event", "No active clip selected.")
+            return
+        ev_name = self._ev_name_var.get().strip()
+        if not ev_name:
+            messagebox.showwarning("Add Event", "Enter an event name.")
+            return
+        try:
+            ev_time = float(self._ev_time_var.get() or self.playback_time)
+        except ValueError:
+            ev_time = self.playback_time
+        self.active_clip.add_event(ev_name, ev_time)
+        self._refresh_event_list()
+        self._redraw_timeline()
+        self.status_var.set(f"Event '{ev_name}' added at t={ev_time:.3f}s")
+
+    def _remove_selected_event(self) -> None:
+        """Remove the selected event from the active clip."""
+        if not self.active_clip:
+            return
+        sel = self._event_listbox.curselection()
+        if not sel:
+            return
+        idx = sel[0]
+        events = self.active_clip.get_events()
+        if idx < len(events):
+            ev = events[idx]
+            # Rebuild events list without the selected entry
+            remaining = [e for i, e in enumerate(events) if i != idx]
+            self.active_clip._events.clear()
+            for e in remaining:
+                self.active_clip.add_event(e["name"], e["time"], e.get("data") or {})
+        self._refresh_event_list()
+        self._redraw_timeline()
+
+    def _refresh_event_list(self) -> None:
+        """Sync the event listbox with the active clip's events."""
+        self._event_listbox.delete(0, tk.END)
+        if not self.active_clip:
+            return
+        for ev in self.active_clip.get_events():
+            self._event_listbox.insert(
+                tk.END, f"{ev['time']:.3f}s  {ev['name']}"
+            )
+
     # -----------------------------------------------------------------------
     # Event handlers
     # -----------------------------------------------------------------------
@@ -657,6 +747,7 @@ class AnimationEditor:
         for clip in self.clips:
             if clip.name == name:
                 self.active_clip = clip
+                self._refresh_event_list()
                 self._redraw_timeline()
                 break
 

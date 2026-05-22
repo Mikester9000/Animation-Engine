@@ -294,7 +294,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 
 | Gate | Status | Details |
 |------|--------|---------|
-| `python -m pytest -q` | ✅ PASS | 173 tests pass (0 failures, 0 errors) |
+| `python -m pytest -q` | ✅ PASS | 176 tests pass (0 failures, 0 errors) |
 | `generate-pack` (ff10_ps2 profile) | ✅ PASS | 43/43 clips generated; `pack_manifest.json` written with profile ID, visual_target, gameplay_target, reference_titles, ordered_files, seed, sample_rate, generation_version |
 | `validate-pack` against generated manifest | ✅ PASS | Style report VALID; all required clips present in correct order; per-clip art-direction fields verified |
 | Manifest lists all required clips in order | ✅ PASS | `ordered_files` entries match `required_clips` in profile definition |
@@ -304,6 +304,9 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 | Quality gates — manifest art-direction | ✅ PASS | `validate-pack` enforces `visual_target`, `gameplay_target`, `reference_titles` match selected profile |
 | Quality gates — per-clip metadata | ✅ PASS | `validate-pack` enforces per-clip `style_profile`, `motion_type`, art-direction fields, duration, sample_rate |
 | Deterministic defaults pinned | ✅ PASS | `PIPELINE_DEFAULT_BACKEND`, `PIPELINE_DEFAULT_SAMPLE_RATE`, `PIPELINE_DEFAULT_SEED`, `PIPELINE_DEFAULT_PROFILE_ID`, `PIPELINE_GENERATION_VERSION` exported from `asset_pipeline.py` |
+| BlendTree parameter context (Task 13) | ✅ PASS | `self._context` initialised in `BlendTree.__init__`; `set_parameter()` no longer raises `AttributeError` |
+| C++ header events + metadata (Task 15) | ✅ PASS | `anim_to_cpp_header.py` emits clip events and style-profile metadata; `GameEngineCompat.hpp` `AE_AnimClip::Event` struct and `AE_AnimPackage` metadata fields added |
+| Editor event track UI (Task 21) | ✅ PASS | `AnimationEditor` right panel includes Add/Remove event controls; events rendered as markers on the timeline canvas |
 
 ---
 

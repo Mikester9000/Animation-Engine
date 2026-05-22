@@ -156,6 +156,7 @@ class BlendTree:
         self._blend_time: float = 0.0       # Elapsed transition time
         self._blend_duration: float = 0.0   # Total transition duration
         self._pending_trigger: Optional[str] = None
+        self._context: dict = {}
 
     # -- building the graph --------------------------------------------------
 

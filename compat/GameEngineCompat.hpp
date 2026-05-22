@@ -561,6 +561,12 @@ struct AE_AnimClip {
     float                  fps      = 30.0f;
     bool                   loop     = true;
     std::vector<AE_Channel> channels;
+    /// Timeline event markers embedded in this clip.
+    struct Event {
+        std::string name;   ///< Event identifier (e.g. "footstep_left").
+        float       time;   ///< Time in seconds when the event fires.
+    };
+    std::vector<Event> events;
 
     /// Duration of the clip (longest channel end-time).
     float duration() const {
@@ -670,6 +676,10 @@ struct AE_AnimPackage {
     AE_Skeleton                skeleton;
     std::vector<AE_AnimClip>   clips;
     std::vector<AE_MorphTrack> morphTracks;
+    /// Art-direction metadata from the style profile used during generation.
+    std::string styleProfile;    ///< e.g. "ff10_ps2"
+    std::string visualTarget;    ///< e.g. "PlayStation 2 (PS2)"
+    std::string gameplayTarget;  ///< e.g. "modern action-RPG"
 
     /// Find a clip by name; returns nullptr if not found.
     const AE_AnimClip* findClip(const std::string& n) const {
@@ -759,6 +769,14 @@ public:
                 pkg.morphTracks.push_back(parseMorphTrack(root["morph_tracks"][i]));
         }
 
+        // -- style-profile metadata -------------------------------------------
+        if (root.contains("metadata")) {
+            const auto& md = root["metadata"];
+            if (md.contains("style_profile"))  pkg.styleProfile   = md["style_profile"].asString();
+            if (md.contains("visual_target"))  pkg.visualTarget   = md["visual_target"].asString();
+            if (md.contains("gameplay_target")) pkg.gameplayTarget = md["gameplay_target"].asString();
+        }
+
         return pkg;
     }
 
@@ -828,6 +846,15 @@ private:
         if (j.contains("channels")) {
             for (std::size_t i = 0; i < j["channels"].size(); ++i)
                 c.channels.push_back(parseChannel(j["channels"][i]));
+        }
+        if (j.contains("events")) {
+            for (std::size_t i = 0; i < j["events"].size(); ++i) {
+                const auto& ev = j["events"][i];
+                AE_AnimClip::Event e;
+                if (ev.contains("name")) e.name = ev["name"].asString();
+                if (ev.contains("time")) e.time = ev["time"].asFloat();
+                c.events.push_back(e);
+            }
         }
         return c;
     }

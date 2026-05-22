@@ -310,6 +310,17 @@ def _gen_clip(clip: dict, pkg_var: str, clip_idx: int) -> List[str]:
         lines.append(f"        {clip_var}.channels.push_back(ch);")
         lines.append(f"    }}")
 
+    # Emit events
+    for ev in clip.get("events", []):
+        ev_name = ev.get("name", "")
+        ev_time = float(ev.get("time", 0.0))
+        lines.append(f"    {{")
+        lines.append(f"        AE_AnimClip::Event ev;")
+        lines.append(f"        ev.name = {json.dumps(ev_name)};")
+        lines.append(f"        ev.time = {ev_time:.8f}f;")
+        lines.append(f"        {clip_var}.events.push_back(ev);")
+        lines.append(f"    }}")
+
     lines.append(f"    pkg.clips.push_back({clip_var});")
     lines.append("")
     return lines
@@ -411,6 +422,7 @@ def generate(payload: dict, var_name: str) -> str:
     skel_data  = model_data.get("skeleton") or {}
     clips      = payload.get("clips", [])
     morph_trks = payload.get("morph_tracks", [])
+    metadata   = payload.get("metadata") or {}
 
     guard = f"AE_BAKED_{var_name}_HPP"
     pkg   = f"_ae_{var_name.lower()}_pkg"  # internal static var
@@ -447,6 +459,17 @@ def generate(payload: dict, var_name: str) -> str:
         f"    pkg.skeleton.name = {json.dumps(skel_data.get('name', 'Skeleton'))};",
         f"",
     ]
+
+    # Style-profile metadata
+    if metadata:
+        lines.append(f"    // ---- Style-profile metadata ---------------------------------")
+        if "style_profile" in metadata:
+            lines.append(f"    pkg.styleProfile   = {json.dumps(str(metadata['style_profile']))};")
+        if "visual_target" in metadata:
+            lines.append(f"    pkg.visualTarget   = {json.dumps(str(metadata['visual_target']))};")
+        if "gameplay_target" in metadata:
+            lines.append(f"    pkg.gameplayTarget = {json.dumps(str(metadata['gameplay_target']))};")
+        lines.append(f"")
 
     # Bones
     for bone in skel_data.get("bones", []):
