@@ -14,12 +14,12 @@ Current maturity is strong in: data model correctness, deterministic pack genera
 - **Manifest and validation gates** are robust for profile compliance, clip completeness/order, and metadata consistency (`animation_engine/qa/style_validator.py:61-240`, `animation_engine/cli.py:157-279`).
 - **Procedural backend includes baseline combat/traversal clips** (`animation_engine/backend.py:134-321`).
 - **C++ handoff bridge is operational** for runtime loading and pre-baked headers (`compat/anim_to_cpp_header.py:174-200`, `396-477`; `compat/README.md:40-105`).
-- **Automated test suite is healthy** and currently passing (152 tests in this run).
+- **Automated test suite is healthy** and currently passing.
 
 ## 3) Primary Completion Gaps
 
 ### A. Gameplay animation breadth is below open-world/action-JRPG target
-Current required profile clip set is 12 clips (`animation_engine/integration/style_profiles.py:35-48`). This is insufficient for full modern gameplay states (strafe set, sprint stop/turns, climb/vault, ladder, swim, knockdown/recovery, guarded locomotion, combo chains, aerial variants, contextual interaction set).
+Current required profile clip set is 43 clips (`animation_engine/integration/style_profiles.py:35-73`). This is a substantial improvement, but full modern gameplay still benefits from richer variants (e.g., ladder/swim sets, guarded locomotion, and broader contextual interactions).
 
 ### B. Procedural generation quality ceiling is low
 `ProceduralBackend` generates simple keyframe patterns and does not yet model high-quality body mechanics, contact fidelity, weapon styles, or layered upper/lower-body blending (`animation_engine/backend.py:134-321`). Good for placeholder packs, not final production-grade motion.

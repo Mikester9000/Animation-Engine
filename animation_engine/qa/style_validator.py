@@ -106,8 +106,17 @@ class StyleValidator:
     """Validate profile completeness and style-health signals for a pack."""
 
     # Motions expected to loop seamlessly.
-    _CYCLIC_MOTIONS = {"idle", "idle_alt", "idle_combat", "walk", "run", "sprint",
-                       "jump_loop", "climb_loop", "crouch_walk"}
+    _CYCLIC_MOTIONS = {
+        "idle",
+        "idle_alt",
+        "idle_combat",
+        "walk",
+        "run",
+        "sprint",
+        "jump_loop",
+        "climb_loop",
+        "crouch_walk",
+    }
 
     def __init__(self, duration_warning_ratio: float = 0.35, duration_error_ratio: float = 0.60):
         self.duration_warning_ratio = duration_warning_ratio
@@ -220,8 +229,7 @@ class StyleValidator:
 
         if ordered_files_present and actual and actual != expected:
             errors.append(
-                "Clip order mismatch: expected "
-                f"{', '.join(expected)}; got {', '.join(actual)}"
+                "Clip order mismatch: expected " f"{', '.join(expected)}; got {', '.join(actual)}"
             )
 
         manifest_generated = manifest.get("generated")
@@ -349,7 +357,7 @@ class StyleValidator:
         errors: list[str],
         warnings: list[str],
     ) -> None:
-        """Warn when a transition group is only partially present."""
+        """Fail when a transition group is only partially present."""
         for group in TRANSITION_CONTINUITY_GROUPS:
             present = [m for m in group if m in actual_set]
             if present and len(present) < len(group):

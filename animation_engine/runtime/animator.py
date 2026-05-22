@@ -66,13 +66,12 @@ class Animator:
         skeleton = model.skeleton
         bone_count = skeleton.bone_count if skeleton else 0
         # Each skin matrix = world_matrix * inverse_bind
-        self.skin_matrices: List[Matrix4x4] = [
-            Matrix4x4.identity() for _ in range(bone_count)
-        ]
+        self.skin_matrices: List[Matrix4x4] = [Matrix4x4.identity() for _ in range(bone_count)]
         self.morph_weights: Dict[str, float] = {}
 
         # Root-motion output — accumulated XYZ delta since last update().
         self.root_motion_delta: Vector3 = Vector3.zero()
+        self._prev_root_position: Optional[Vector3] = None
 
         # Event dispatch table: event_name -> [callback, ...]
         self.event_callbacks: Dict[str, List[Callable[[dict], None]]] = {}
@@ -82,9 +81,7 @@ class Animator:
         # Track previous time to detect event crossings each frame.
         self._prev_time: float = 0.0
 
-    def register_event_callback(
-        self, event_name: str, callback: Callable[[dict], None]
-    ) -> None:
+    def register_event_callback(self, event_name: str, callback: Callable[[dict], None]) -> None:
         """Register *callback* to be called whenever *event_name* fires.
 
         Parameters
@@ -106,6 +103,13 @@ class Animator:
         self._prev_time = self._time
         self._time += delta
 
+        current_state_before = getattr(self.blend_tree, "_current_state", None)
+        next_state_before = getattr(self.blend_tree, "_next_state", None)
+        previous_local_times = {}
+        for state in (current_state_before, next_state_before):
+            if state is not None:
+                previous_local_times[state] = getattr(state, "_local_time", 0.0)
+
         # 1. Advance blend tree → per-bone FK pose
         pose: Dict[str, Transform] = self.blend_tree.update(delta, context)
 
@@ -122,8 +126,11 @@ class Animator:
         # 5. Extract root-motion delta from pose (XZ translation from root bone)
         self._extract_root_motion(pose)
 
-        # 6. Dispatch animation events that fall in (prev_time, current_time]
-        self._dispatch_events()
+        # 6. Dispatch animation events that crossed this state's local timeline.
+        current_state = getattr(self.blend_tree, "_current_state", None)
+        current_local_time = getattr(current_state, "_local_time", 0.0) if current_state else 0.0
+        previous_local_time = previous_local_times.get(current_state, current_local_time)
+        self._dispatch_events(current_state, previous_local_time, current_local_time)
 
     # -- IK ------------------------------------------------------------------
 
@@ -196,9 +203,7 @@ class Animator:
         if skeleton is None:
             return
 
-        bone_transforms_list = [
-            pose.get(b.name, b.local_transform) for b in skeleton.bones
-        ]
+        bone_transforms_list = [pose.get(b.name, b.local_transform) for b in skeleton.bones]
         world_matrices = skeleton.get_world_matrices(bone_transforms_list)
         for i, bone in enumerate(skeleton.bones):
             self.skin_matrices[i] = world_matrices[i] * bone.inverse_bind
@@ -226,35 +231,69 @@ class Animator:
         root_name = skeleton.bones[0].name
         root_transform = pose.get(root_name)
         if root_transform is not None:
-            self.root_motion_delta = root_transform.position
+            current_root_position = root_transform.position
+            if self._prev_root_position is None:
+                self.root_motion_delta = Vector3.zero()
+            else:
+                self.root_motion_delta = current_root_position - self._prev_root_position
+            self._prev_root_position = current_root_position
         else:
             self.root_motion_delta = Vector3.zero()
+            self._prev_root_position = None
 
     # -- event dispatch -------------------------------------------------------
 
-    def _dispatch_events(self) -> None:
+    def _dispatch_events(
+        self,
+        current_state,
+        previous_local_time: float,
+        current_local_time: float,
+    ) -> None:
         """Fire callbacks for any animation events in the current frame window.
 
         Checks the active clip's event list (if accessible) for events whose
-        ``time`` falls in the half-open interval ``(prev_time, current_time]``.
+        clip-local ``time`` falls in the half-open interval
+        ``(previous_local_time, current_local_time]`` with loop-wrap handling.
         """
         if not self.event_callbacks:
             return
 
-        # Retrieve the active clip from the blend tree's current state.
-        active_clip = None
-        state = getattr(self.blend_tree, "_current_state", None)
-        if state is not None:
-            active_clip = getattr(state, "clip", None)
+        active_clip = getattr(current_state, "clip", None) if current_state else None
         if active_clip is None:
             return
 
+        clip_duration = active_clip.duration
+        is_looping = bool(getattr(active_clip, "loop", False))
         for event in active_clip.get_events():
             t = event["time"]
-            if self._prev_time < t <= self._time:
+            if self._did_event_fire_this_update(
+                t, previous_local_time, current_local_time, clip_duration, is_looping
+            ):
                 callbacks = self.event_callbacks.get(event["name"], [])
                 for cb in callbacks:
                     cb(event)
+
+    @staticmethod
+    def _did_event_fire_this_update(
+        event_time: float,
+        previous_local_time: float,
+        current_local_time: float,
+        clip_duration: float,
+        is_looping: bool,
+    ) -> bool:
+        """Return True when an event time is crossed in this update window."""
+        if not is_looping or clip_duration <= 1e-6:
+            return previous_local_time < event_time <= current_local_time
+
+        delta = current_local_time - previous_local_time
+        if delta >= clip_duration:
+            return True
+
+        prev_mod = previous_local_time % clip_duration
+        curr_mod = current_local_time % clip_duration
+        if prev_mod < curr_mod:
+            return prev_mod < event_time <= curr_mod
+        return event_time > prev_mod or event_time <= curr_mod
 
     # -- convenience ---------------------------------------------------------
 

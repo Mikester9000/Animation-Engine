@@ -140,7 +140,7 @@ def _cmd_generate_pack(args: argparse.Namespace) -> int:
         with open(manifest_out, "w", encoding="utf-8") as fh:
             json.dump(manifest, fh, indent=2)
 
-    # Strict mode: fail if any clip failed OR if any warning-level issue exists.
+    # Strict mode: fail if any clip failed generation.
     if args.strict and manifest.get("failed"):
         print("STRICT MODE: generation failures are not allowed")
         return 1
@@ -262,7 +262,9 @@ def _cmd_validate_pack(args: argparse.Namespace) -> int:
             clip_report = clip_validator.validate_clip(clip)
             loop_report = loop_analyzer.analyze_clip(clip)
             loop_reports[motion] = loop_report
-            print(f"[{motion}] clip={clip.name} | {clip_report.summary()} | {loop_report.summary()}")
+            print(
+                f"[{motion}] clip={clip.name} | {clip_report.summary()} | {loop_report.summary()}"
+            )
             if not clip_report.is_valid:
                 all_valid = False
                 for err in clip_report.errors:
