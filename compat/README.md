@@ -265,7 +265,7 @@ ac.transitionTo("run_cycle", 0.3f);
 ## Supported .anim Schema Fields
 
 The C++ bridge reads all fields defined in the current Animation Engine project release.
-The `.anim` payload header format version remains `1.0` (see `animation_engine/io/anim_format.py`).
+The top-level `.anim` payload header version remains `1.0` (`FORMAT_VERSION`), while clip-level migration uses `clip_schema_revision = 2` (`migrate_anim_dict` in `animation_engine/io/anim_format.py`).
 
 | JSON field | C++ struct | Notes |
 |------------|-----------|-------|
