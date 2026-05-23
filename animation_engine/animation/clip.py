@@ -190,6 +190,9 @@ class AnimationClip:
     def rename_bone_channels(self, old_bone_name: str, new_bone_name: str) -> int:
         """Rename all channels that reference *old_bone_name* to *new_bone_name*.
 
+        If a destination channel already exists for the same target, keyframes
+        are merged into that destination channel.
+
         Returns the number of channels updated.
         """
         if old_bone_name == new_bone_name:

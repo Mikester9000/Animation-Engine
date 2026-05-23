@@ -306,3 +306,4 @@ def test_clip_rename_bone_channels_merges_when_destination_exists() -> None:
     ch = clip.get_channel("spine_a", ChannelTarget.TRANSLATION)
     assert ch is not None
     assert [kf.time for kf in ch.keyframes] == [0.0, 1.0]
+    assert [kf.value for kf in ch.keyframes] == [[0, 0, 0], [0, 1, 0]]
