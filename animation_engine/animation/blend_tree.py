@@ -86,6 +86,11 @@ class BlendState:
         """Restart playback from the beginning."""
         self._local_time = 0.0
 
+    @property
+    def local_time(self) -> float:
+        """Current playback position in seconds."""
+        return self._local_time
+
     def to_dict(self) -> dict:
         return {"name": self.name, "clip_name": self.clip.name, "speed": self.speed}
 
@@ -237,7 +242,7 @@ class BlendTree:
         ):
             clip_dur = self._current_state.clip.duration
             if clip_dur > 1e-6:
-                local_time = self._current_state._local_time
+                local_time = self._current_state.local_time
                 if local_time >= clip_dur:
                     target_name = self._exit_time_target
                     transition = self._exit_time_transition

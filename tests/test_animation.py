@@ -384,8 +384,8 @@ class TestBlendTreeExitTime:
         """Transition begins once the clip has played through."""
         tree = _make_exit_tree()
         tree.trigger("walk")
-        # Advance beyond the 1-second clip duration
-        for _ in range(80):  # 80 * 0.016 ≈ 1.28 s
+        # Advance beyond the 1-second clip duration (80 * 0.016 = 1.28 s > 1.0 s clip)
+        for _ in range(80):
             tree.update(0.016)
         # Transition should have started (and possibly completed by now)
         assert tree.current_state_name in ("idle", "walk")
