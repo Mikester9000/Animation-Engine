@@ -30,6 +30,21 @@ def select_clip_name(clip_names: Iterable[str], requested: str | None, fallback:
     return fallback
 
 
+def unique_duplicate_name(base: str, existing_names: set[str]) -> str:
+    """Return a unique '_copy' name derived from *base* not present in *existing_names*."""
+    candidate = f"{base}_copy"
+    counter = 2
+    while candidate in existing_names:
+        candidate = f"{base}_copy{counter}"
+        counter += 1
+    return candidate
+
+
+def is_rename_collision(new_name: str, other_names: Iterable[str]) -> bool:
+    """Return True if *new_name* collides with any name in *other_names*."""
+    return new_name in other_names
+
+
 @dataclass(slots=True)
 class PlaybackState:
     """Playback state and stepping utility."""

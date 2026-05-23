@@ -667,13 +667,13 @@ def test_animator_root_motion_delta_is_per_frame_delta():
 _ALL_PROFILE_IDS = ["ff7_ps2", "ff8_ps2", "ff9_ps2", "ff10_ps2", "ff12_ps2"]
 
 
-def test_expanded_clip_taxonomy_has_43_motions():
-    """Every built-in profile requires exactly 43 clip types."""
+def test_expanded_clip_taxonomy_covers_minimum_motions():
+    """Legacy minimum-coverage guard: every built-in profile requires at least 43 clip types."""
     for pid in _ALL_PROFILE_IDS:
         profile = get_style_profile(pid)
         assert (
-            len(profile.required_clips) == 43
-        ), f"Profile {pid} has {len(profile.required_clips)} clips, expected 43"
+            len(profile.required_clips) >= 43
+        ), f"Profile {pid} has {len(profile.required_clips)} clips, expected >= 43"
 
 
 def test_procedural_backend_supports_all_required_motions():
@@ -853,3 +853,70 @@ def test_motion_style_variants_exported_on_all_profiles():
         for field in cadence_fields:
             val = getattr(variants, field)
             assert val > 0, f"{pid}.{field} = {val} (must be > 0)"
+
+
+# ---------------------------------------------------------------------------
+# Tests for expanded clip taxonomy (57 clips)
+# ---------------------------------------------------------------------------
+
+_NEW_MOTION_TYPES = [
+    "backstep",
+    "block_break",
+    "emote_cheer",
+    "guard_walk",
+    "knockdown_air",
+    "ladder_down",
+    "ladder_up",
+    "land_hard",
+    "land_roll",
+    "sprint_start",
+    "sprint_stop",
+    "swim_forward",
+    "swim_idle",
+    "swim_surface",
+]
+
+
+def test_expanded_taxonomy_has_57_clips():
+    """All profiles now include the expanded 57-clip set."""
+    for pid in _ALL_PROFILE_IDS:
+        profile = get_style_profile(pid)
+        assert len(profile.required_clips) == 57, (
+            f"Profile {pid} has {len(profile.required_clips)} clips, expected 57"
+        )
+
+
+def test_new_motion_types_present_in_all_profiles():
+    """Every new motion type is present in every built-in profile's required_clips."""
+    for pid in _ALL_PROFILE_IDS:
+        profile = get_style_profile(pid)
+        motion_types = {spec.motion_type for spec in profile.required_clips}
+        for mt in _NEW_MOTION_TYPES:
+            assert mt in motion_types, f"Profile {pid} is missing new motion type '{mt}'"
+
+
+def test_procedural_backend_generates_all_new_motion_types():
+    """ProceduralBackend generates a non-empty clip for each new motion type."""
+    backend = ProceduralBackend()
+    skel = _make_skeleton()
+    for mt in _NEW_MOTION_TYPES:
+        clip = backend.generate_clip(skel, mt, 1.0)
+        assert clip.name == mt, f"Clip name mismatch for '{mt}'"
+        assert len(clip.channels) >= 1, f"No channels generated for '{mt}'"
+
+
+def test_procedural_backend_supported_types_covers_new_motions():
+    """supported_motion_types() explicitly lists all new motion types."""
+    supported = set(ProceduralBackend().supported_motion_types())
+    for mt in _NEW_MOTION_TYPES:
+        assert mt in supported, f"'{mt}' not in supported_motion_types()"
+
+
+def test_full_pipeline_generates_expanded_pack(tmp_path):
+    """Pipeline generates a complete pack for the expanded 57-clip taxonomy."""
+    skel = _make_skeleton()
+    pipeline = AnimationPipeline(profile_id="ff10_ps2")
+    manifest = pipeline.generate_all(tmp_path, skel)
+    generated = {e["motion_type"] for e in manifest["ordered_files"]}
+    for mt in _NEW_MOTION_TYPES:
+        assert mt in generated, f"Pipeline did not generate clip for '{mt}'"
