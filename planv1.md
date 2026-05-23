@@ -294,7 +294,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 
 | Gate | Status | Details |
 |------|--------|---------|
-| `python -m pytest -q` | ✅ PASS | 197 tests pass (0 failures, 0 errors) |
+| `python -m pytest -q` | ✅ PASS | 225 tests pass (0 failures, 0 errors) |
 | `generate-pack` (ff10_ps2 profile) | ✅ PASS | 57/57 clips generated; `pack_manifest.json` written with profile ID, visual_target, gameplay_target, reference_titles, ordered_files, seed, sample_rate, generation_version |
 | `validate-pack` against generated manifest | ✅ PASS | Style report VALID; all required clips present in correct order; per-clip art-direction fields verified |
 | Manifest lists all required clips in order | ✅ PASS | `ordered_files` entries match `required_clips` in profile definition |

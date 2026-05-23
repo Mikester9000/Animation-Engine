@@ -34,6 +34,7 @@ from ..animation.morph_track import MorphTrack
 from ..io.anim_format import AnimExporter, AnimImporter
 from ..io.gltf import GltfExporter
 from ..math_utils import Matrix4x4, Vector3, Vector4, Quaternion, Transform
+from ..runtime.skinning import cpu_skin_mesh
 from .state import PlaybackState, is_rename_collision, merge_recent_files, normalize_path, select_clip_name, unique_duplicate_name
 
 # ---------------------------------------------------------------------------
@@ -55,9 +56,24 @@ PLAYHEAD_COLOR = "#ff4444"
 RECENT_FILES_LIMIT = 8
 
 PS2_LIGHTING_PRESETS = {
-    "ps2_studio": {"grid": "#33506f", "skeleton": "#f5d06a", "joint": "#f8e3a8"},
-    "ps2_field": {"grid": "#395539", "skeleton": "#d8d98f", "joint": "#f0efc3"},
-    "ps2_night": {"grid": "#2d3550", "skeleton": "#8ab2ff", "joint": "#c7dbff"},
+    "ps2_studio": {
+        "grid": "#33506f",
+        "skeleton": "#f5d06a",
+        "joint": "#f8e3a8",
+        "wire": "#2a4a6a",
+    },
+    "ps2_field": {
+        "grid": "#395539",
+        "skeleton": "#d8d98f",
+        "joint": "#f0efc3",
+        "wire": "#375a37",
+    },
+    "ps2_night": {
+        "grid": "#2d3550",
+        "skeleton": "#8ab2ff",
+        "joint": "#c7dbff",
+        "wire": "#32466a",
+    },
 }
 
 
@@ -1762,7 +1778,7 @@ class AnimationEditor:
         self._draw_skeleton_world(
             c, w, h, self.model.skeleton, primary_world, preset["skeleton"], preset["joint"]
         )
-        self._draw_mesh_wireframe(c, w, h, primary_world)
+        self._draw_mesh_wireframe(c, w, h, primary_world, preset)
         if self.compare_var.get():
             baseline = self._baseline_clip_snapshots.get(
                 self.active_clip.name if self.active_clip else ""
@@ -1798,25 +1814,36 @@ class AnimationEditor:
         width: int,
         height: int,
         world_mats: list,
+        preset: Dict[str, str],
     ) -> None:
         """Draw a PS2-style wireframe overlay for all model meshes (Task 23)."""
-        if not self.model or not self.model.meshes:
+        if not self.model or not self.model.meshes or not self.model.skeleton:
             return
+        skel = self.model.skeleton
+        skin_mats = [
+            world_mats[i] * skel.bones[i].inverse_bind
+            for i in range(min(len(world_mats), len(skel.bones)))
+        ]
+        if not skin_mats:
+            return
+        wire_color = preset.get("wire", preset.get("grid", "#2a4a6a"))
         for mesh in self.model.meshes:
             if not mesh.vertices or not mesh.indices:
                 continue
-            # Build per-vertex skinned world position.
+            skinned_mesh = cpu_skin_mesh(mesh, skin_mats)
             verts = mesh.vertices
-            n_verts = len(verts)
+            skinned_verts = skinned_mesh.vertices
             cached_pts: Dict[int, Optional[tuple[float, float]]] = {}
             for vi, v in enumerate(verts):
-                # Simple 1-bone lookup for performance; use first bone_index.
-                bi = v.bone_indices[0] if v.bone_indices else 0
-                mat = world_mats[bi] if 0 <= bi < len(world_mats) else None
-                if mat is None:
+                if not any(
+                    wi < len(v.bone_weights)
+                    and v.bone_weights[wi] > 1e-6
+                    and 0 <= bi < len(skin_mats)
+                    for wi, bi in enumerate(v.bone_indices)
+                ):
                     cached_pts[vi] = None
                     continue
-                pos = mat.transform_point(v.position)
+                pos = skinned_verts[vi].position
                 cached_pts[vi] = self._project_world_point(pos, width, height)
             # Draw triangle edges (de-duplicate shared edges for speed).
             drawn_edges: set = set()
@@ -1831,7 +1858,7 @@ class AnimationEditor:
                     if pa and pb:
                         canvas.create_line(
                             pa[0], pa[1], pb[0], pb[1],
-                            fill="#2a4a6a", width=1,
+                            fill=wire_color, width=1,
                         )
 
     def _draw_view_grid(self, canvas: tk.Canvas, width: int, height: int, color: str) -> None:

@@ -345,7 +345,7 @@ class TestMorphTrack:
 
 
 # ---------------------------------------------------------------------------
-# BlendTree — exit_time, condition, and event-timing tests (Task 19)
+# BlendTree — exit_time, condition, and event-timing tests (Tasks 13/14)
 # ---------------------------------------------------------------------------
 
 

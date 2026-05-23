@@ -384,7 +384,6 @@ def _cmd_batch_export_headers(args: argparse.Namespace) -> int:
     """Convert every clip in a pack manifest to a C++ header file."""
     import sys
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from compat.anim_to_cpp_header import convert_pack_manifest
 
     manifest_path = Path(args.manifest)

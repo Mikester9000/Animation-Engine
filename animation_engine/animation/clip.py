@@ -293,10 +293,36 @@ def retarget_clip(
             scale = tgt_len / src_len
             for kf in ch.keyframes:
                 scaled_value = [v * scale for v in kf.value]
-                new_ch.add_keyframe(Keyframe(kf.time, scaled_value, kf.interp))
+                scaled_in_tangent = (
+                    [v * scale for v in kf.in_tangent]
+                    if isinstance(kf.in_tangent, list)
+                    else kf.in_tangent * scale
+                )
+                scaled_out_tangent = (
+                    [v * scale for v in kf.out_tangent]
+                    if isinstance(kf.out_tangent, list)
+                    else kf.out_tangent * scale
+                )
+                new_ch.add_keyframe(
+                    Keyframe(
+                        time=kf.time,
+                        value=scaled_value,
+                        in_tangent=scaled_in_tangent,
+                        out_tangent=scaled_out_tangent,
+                        interp=kf.interp,
+                    )
+                )
         else:
             for kf in ch.keyframes:
-                new_ch.add_keyframe(Keyframe(kf.time, list(kf.value), kf.interp))
+                new_ch.add_keyframe(
+                    Keyframe(
+                        time=kf.time,
+                        value=deepcopy(kf.value),
+                        in_tangent=deepcopy(kf.in_tangent),
+                        out_tangent=deepcopy(kf.out_tangent),
+                        interp=kf.interp,
+                    )
+                )
         new_clip._channels[(mapped_name, target)] = new_ch
 
     for ev in clip._events:

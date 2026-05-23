@@ -44,7 +44,7 @@ animation_engine/
 ├── integration/     AnimationPipeline, StyleProfile, MotionStyleVariants
 ├── qa/              ClipValidator, LoopAnalyzer, SkeletonValidator, StyleValidator
 └── editor/          Tkinter timeline + bone editor (AnimationEditor)
-tests/               pytest test suite (197 tests)
+tests/               pytest test suite (225 tests)
 ```
 
 ---
