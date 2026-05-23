@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 
+from animation_engine.animation.channel import ChannelTarget
 from animation_engine.animation.clip import AnimationClip
 from animation_engine.animation.morph_track import MorphTrack
 from animation_engine.editor.state import (
@@ -196,7 +197,6 @@ def test_clip_loop_toggle_via_settings() -> None:
 
 
 def test_clip_duration_reflects_keyframe_span() -> None:
-    from animation_engine.animation.channel import ChannelTarget
     clip = AnimationClip("attack")
     clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
     clip.add_keyframe("root", ChannelTarget.TRANSLATION, 1.5, [0, 1, 0])
@@ -268,7 +268,6 @@ def test_skeleton_remove_bone_indices_stay_contiguous() -> None:
 
 
 def test_clip_rename_bone_channels() -> None:
-    from animation_engine.animation.channel import ChannelTarget
     clip = AnimationClip("walk")
     clip.add_keyframe("spine_01", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
     clip.add_keyframe("spine_01", ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
@@ -280,7 +279,6 @@ def test_clip_rename_bone_channels() -> None:
 
 
 def test_clip_remove_bone_channels() -> None:
-    from animation_engine.animation.channel import ChannelTarget
     clip = AnimationClip("walk")
     clip.add_keyframe("spine_01", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
     clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
@@ -291,7 +289,6 @@ def test_clip_remove_bone_channels() -> None:
 
 
 def test_clip_rename_bone_channels_no_op_when_bone_absent() -> None:
-    from animation_engine.animation.channel import ChannelTarget
     clip = AnimationClip("idle")
     clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
     updated = clip.rename_bone_channels("nonexistent", "new_name")
@@ -299,8 +296,6 @@ def test_clip_rename_bone_channels_no_op_when_bone_absent() -> None:
 
 
 def test_clip_rename_bone_channels_merges_when_destination_exists() -> None:
-    from animation_engine.animation.channel import ChannelTarget
-
     clip = AnimationClip("walk")
     clip.add_keyframe("spine_01", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
     clip.add_keyframe("spine_a", ChannelTarget.TRANSLATION, 1.0, [0, 1, 0])
