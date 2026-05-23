@@ -98,15 +98,13 @@ def test_delete_clip_removes_from_list() -> None:
 
 def test_rename_clip_detects_collision() -> None:
     clips = _make_clips("idle", "run")
-    new_name = "run"
-    other_names = [c.name for c in clips if c is not clips[0]]
-    assert is_rename_collision(new_name, other_names), "Should detect collision with existing name"
+    other_names = [c.name for c in clips if c.name != clips[0].name]
+    assert is_rename_collision("run", other_names), "Should detect collision with existing name"
 
 
 def test_rename_clip_accepts_unique_name() -> None:
     clips = _make_clips("idle", "run")
-    new_name = "walk"
-    other_names = [c.name for c in clips if c is not clips[0]]
-    assert not is_rename_collision(new_name, other_names), "Unique name should not collide"
-    clips[0].name = new_name
+    other_names = [c.name for c in clips if c.name != clips[0].name]
+    assert not is_rename_collision("walk", other_names), "Unique name should not collide"
+    clips[0].name = "walk"
     assert clips[0].name == "walk"

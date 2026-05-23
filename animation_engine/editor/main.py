@@ -1169,7 +1169,7 @@ class AnimationEditor:
             self._refresh_ui()
         msg = f"Generated {added} clip(s) from profile '{chosen}'."
         if skipped:
-            msg += f" Skipped {skipped} already-existing clip(s)."
+            msg += f" Skipped {skipped} existing clip(s)."
         if failed:
             msg += f" {len(failed)} clip(s) failed: {', '.join(failed)}."
         self.status_var.set(msg)

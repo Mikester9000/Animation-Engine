@@ -42,7 +42,7 @@ def unique_duplicate_name(base: str, existing_names: set[str]) -> str:
 
 def is_rename_collision(new_name: str, other_names: Iterable[str]) -> bool:
     """Return True if *new_name* collides with any name in *other_names*."""
-    return new_name in list(other_names)
+    return new_name in other_names
 
 
 @dataclass(slots=True)
