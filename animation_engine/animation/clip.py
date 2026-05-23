@@ -192,13 +192,23 @@ class AnimationClip:
 
         Returns the number of channels updated.
         """
+        if old_bone_name == new_bone_name:
+            return 0
         keys_to_rename = [
             k for k in self._channels if k[0] == old_bone_name
         ]
         for key in keys_to_rename:
+            new_key = (new_bone_name, key[1])
+            if new_key in self._channels:
+                existing = self._channels[new_key]
+                source = self._channels[key]
+                for kf in source.keyframes:
+                    existing.add_keyframe(kf)
+                del self._channels[key]
+                continue
             ch = self._channels.pop(key)
             ch.bone_name = new_bone_name
-            self._channels[(new_bone_name, key[1])] = ch
+            self._channels[new_key] = ch
         return len(keys_to_rename)
 
     def remove_bone_channels(self, bone_name: str) -> int:
@@ -216,6 +226,7 @@ class AnimationClip:
             "name": self.name,
             "fps": self.fps,
             "loop": self.loop,
+            "motion_type": self.motion_type,
             "channels": [ch.to_dict() for ch in self._channels.values()],
         }
         if self._events:
@@ -229,6 +240,7 @@ class AnimationClip:
             fps=d.get("fps", 30.0),
             loop=d.get("loop", True),
         )
+        clip.motion_type = str(d.get("motion_type", "") or "")
         for ch_data in d.get("channels", []):
             ch = AnimationChannel.from_dict(ch_data)
             clip._channels[(ch.bone_name, ch.target)] = ch

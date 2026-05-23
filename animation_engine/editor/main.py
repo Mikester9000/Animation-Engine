@@ -888,6 +888,7 @@ class AnimationEditor:
             self._clip_fps_var.set("30.0")
             self._clip_dur_var.set("0.000 s")
             self._clip_motion_var.set("")
+            self._clip_loop_left_var.set(False)
             return
         self._clip_fps_var.set(f"{clip.fps:.4g}")
         self._clip_dur_var.set(f"{clip.duration:.3f} s")
@@ -969,11 +970,10 @@ class AnimationEditor:
         if not dialog.result:
             return
         try:
-            weight = float(dialog.result)
+            raw_weight = float(dialog.result)
         except ValueError:
             messagebox.showwarning("Morph Keyframe", "Enter a numeric weight.")
             return
-        raw_weight = float(dialog.result)
         weight = max(0.0, min(1.0, raw_weight))
         if weight != raw_weight:
             messagebox.showinfo(
