@@ -1790,7 +1790,7 @@ class AnimationEditor:
         finally:
             menu.grab_release()
 
-
+    def _add_event(self) -> None:
         """Add a timeline event marker to the active clip."""
         if not self.active_clip:
             messagebox.showinfo("Add Event", "No active clip selected.")

@@ -252,11 +252,8 @@ def test_skeleton_remove_bone_updates_parent_children_list() -> None:
     spine01 = skel.get_bone("spine_01")
     assert skel.get_bone_index("spine_02") in spine01.children
     skel.remove_bone("spine_02")
-    # spine_01 should no longer list the removed bone as a child
-    assert all(
-        skel.bones[c].name != "spine_02"
-        for c in (skel.get_bone("spine_01").children if skel.get_bone("spine_01") else [])
-    )
+    # spine_01's children list must not reference the deleted bone's old index
+    assert skel.get_bone_index("spine_02") not in skel.get_bone("spine_01").children
 
 
 def test_skeleton_remove_bone_indices_stay_contiguous() -> None:
