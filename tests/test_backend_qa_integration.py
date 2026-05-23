@@ -668,7 +668,7 @@ _ALL_PROFILE_IDS = ["ff7_ps2", "ff8_ps2", "ff9_ps2", "ff10_ps2", "ff12_ps2"]
 
 
 def test_expanded_clip_taxonomy_has_43_motions():
-    """Every built-in profile requires at least 43 clip types (now expanded to 57)."""
+    """Legacy minimum-coverage guard: every built-in profile requires at least 43 clip types."""
     for pid in _ALL_PROFILE_IDS:
         profile = get_style_profile(pid)
         assert (
