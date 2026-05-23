@@ -163,6 +163,15 @@ class TestAnimationClip:
         assert clip2.name == "walk"
         assert len(clip2.channels) == 2  # translation + rotation channels
 
+    def test_remove_event_at_index_uses_sorted_identity(self):
+        clip = AnimationClip("events")
+        clip.add_event("dup", 1.0, {"v": 1})
+        first = clip._events[-1]
+        clip.add_event("dup", 1.0, {"v": 1})
+        clip.remove_event_at_index(1)
+        assert len(clip._events) == 1
+        assert clip._events[0] is first
+
 
 # ---------------------------------------------------------------------------
 # BlendTree
@@ -223,6 +232,28 @@ class TestBlendTree:
         """Triggering a non-existent state should not crash."""
         tree = self._make_tree()
         tree.trigger("nonexistent")
+        pose = tree.update(0.016)
+        assert pose is not None
+
+    def test_set_parameter_stores_value(self):
+        """set_parameter should store a value retrievable from _context."""
+        tree = self._make_tree()
+        tree.set_parameter("speed", 1.5)
+        assert tree._context["speed"] == 1.5
+
+    def test_set_parameter_multiple_values(self):
+        """set_parameter supports multiple independent keys."""
+        tree = self._make_tree()
+        tree.set_parameter("speed", 2.0)
+        tree.set_parameter("combat_mode", True)
+        assert tree._context["speed"] == 2.0
+        assert tree._context["combat_mode"] is True
+
+    def test_set_parameter_does_not_crash_after_update(self):
+        """set_parameter should not raise even after update is called."""
+        tree = self._make_tree()
+        tree.update(0.016)
+        tree.set_parameter("speed", 0.5)
         pose = tree.update(0.016)
         assert pose is not None
 

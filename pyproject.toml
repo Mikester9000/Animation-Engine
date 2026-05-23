@@ -19,6 +19,7 @@ dev = ["pytest>=7.0", "black", "ruff"]
 
 [project.scripts]
 animation-engine = "animation_engine.cli:main"
+animation-engine-gui = "animation_engine.gui.production_pack_gui:main"
 
 [tool.black]
 line-length = 100

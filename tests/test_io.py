@@ -6,22 +6,19 @@ Unit tests for animation_engine.io (.anim format and glTF 2.0 export/import).
 
 import json
 import os
-import tempfile
 import pytest
 
 from animation_engine.model import Model, Mesh, Vertex, PBRMaterial, Skeleton
-from animation_engine.model.mesh import MorphTarget
-from animation_engine.math_utils import Vector2, Vector3, Transform
+from animation_engine.math_utils import Vector2, Vector3
 from animation_engine.animation import AnimationClip, MorphTrack
 from animation_engine.animation.channel import ChannelTarget
-from animation_engine.animation.keyframe import KeyframeType
 from animation_engine.io import AnimExporter, AnimImporter, GltfExporter, GltfImporter
 from compat.anim_to_cpp_header import convert_pack_manifest, main as anim_to_cpp_header_main
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model() -> Model:
     """Return a minimal complete model suitable for export tests."""
@@ -80,6 +77,7 @@ def _make_clip() -> AnimationClip:
 # ---------------------------------------------------------------------------
 # .anim format
 # ---------------------------------------------------------------------------
+
 
 class TestAnimFormat:
     def test_export_to_string(self):
@@ -165,9 +163,28 @@ class TestAnimFormat:
         _, _, _, metadata = importer.import_string(s, include_metadata=True)
         assert metadata is None
 
+    def test_editor_state_metadata_roundtrip(self):
+        model = _make_model()
+        clip = _make_clip()
+        metadata = {
+            "editor_state": {
+                "selected_clip": "run",
+                "playback_time": 0.75,
+                "viewer": {"lighting": "ps2_studio", "show_grid": True},
+            }
+        }
+        exporter = AnimExporter()
+        payload = exporter.export_string(model, [clip], metadata=metadata)
+        importer = AnimImporter()
+        _, _, _, imported_metadata = importer.import_string(payload, include_metadata=True)
+        assert imported_metadata is not None
+        assert imported_metadata["editor_state"]["selected_clip"] == "run"
+        assert imported_metadata["editor_state"]["viewer"]["lighting"] == "ps2_studio"
+
     def test_wrong_format_raises(self):
-        bad_json = json.dumps({"format": "SomeOtherEngine", "version": "1.0",
-                               "model": {}, "clips": []})
+        bad_json = json.dumps(
+            {"format": "SomeOtherEngine", "version": "1.0", "model": {}, "clips": []}
+        )
         importer = AnimImporter()
         with pytest.raises(ValueError, match="Unrecognised format"):
             importer.import_string(bad_json)
@@ -251,6 +268,7 @@ class TestAnimFormat:
 # ---------------------------------------------------------------------------
 # glTF 2.0
 # ---------------------------------------------------------------------------
+
 
 class TestGltfExporter:
     def test_export_creates_files(self, tmp_path):
