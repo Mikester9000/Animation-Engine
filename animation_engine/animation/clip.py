@@ -240,7 +240,7 @@ class AnimationClip:
             fps=d.get("fps", 30.0),
             loop=d.get("loop", True),
         )
-        clip.motion_type = str(d.get("motion_type", "") or "")
+        clip.motion_type = str(d.get("motion_type", ""))
         for ch_data in d.get("channels", []):
             ch = AnimationChannel.from_dict(ch_data)
             clip._channels[(ch.bone_name, ch.target)] = ch
