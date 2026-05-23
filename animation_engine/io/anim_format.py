@@ -35,6 +35,49 @@ from ..animation.morph_track import MorphTrack
 FORMAT_VERSION = "1.0"
 FORMAT_NAME = "AnimEngine"
 
+# Minimum clip-level schema revision produced by this version of the engine.
+# Older .anim payloads lack fields like `events` and `gameplay_tags` on each
+# clip dict; `migrate_anim_dict` upgrades them before parsing.
+_CLIP_SCHEMA_REVISION = 2
+
+
+def migrate_anim_dict(payload: dict) -> dict:
+    """Upgrade a legacy .anim payload dict to the current clip schema revision.
+
+    Operates on the in-memory dict — no file I/O is performed.  The function
+    is idempotent: running it twice returns the same result.
+
+    Changes applied when missing:
+
+    * Each clip dict gains ``"events": []`` (introduced with event-marker
+      support).
+    * Each clip dict gains ``"gameplay_tags": {}`` (introduced with gameplay
+      semantic metadata).
+    * The payload gains ``"clip_schema_revision": 2`` so callers can detect
+      that migration has already been applied.
+
+    Parameters
+    ----------
+    payload:
+        The parsed JSON dict from a .anim file (or any dict containing a
+        ``"clips"`` list of clip dicts).
+
+    Returns
+    -------
+    The same dict object, mutated in place and also returned for convenience.
+    """
+    if payload.get("clip_schema_revision", 1) >= _CLIP_SCHEMA_REVISION:
+        return payload
+
+    for clip_dict in payload.get("clips", []):
+        if not isinstance(clip_dict, dict):
+            continue
+        clip_dict.setdefault("events", [])
+        clip_dict.setdefault("gameplay_tags", {})
+
+    payload["clip_schema_revision"] = _CLIP_SCHEMA_REVISION
+    return payload
+
 
 class AnimExporter:
     """
@@ -165,6 +208,8 @@ class AnimImporter:
     def _parse_payload(
         payload: dict,
     ) -> Tuple[Model, List[AnimationClip], List[MorphTrack], Optional[dict[str, Any]]]:
+        # Upgrade legacy clip-level fields before parsing.
+        migrate_anim_dict(payload)
         # Validate header
         fmt = payload.get("format", "")
         if fmt != FORMAT_NAME:

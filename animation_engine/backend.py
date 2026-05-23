@@ -188,52 +188,74 @@ class ProceduralBackend(AnimationBackend):
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 
         elif motion_type == "walk":
-            # Simple walk cycle on root
+            # Eight-count stride cycle: hip sway, forward root translation,
+            # counter-rotating shoulders for FF-style characterful locomotion.
             if skeleton and len(skeleton.bones) > 0:
                 root_name = skeleton.bones[0].name
-                step_duration = duration / (4 * cadence_scale)
+                spine_name = skeleton.bones[1].name if len(skeleton.bones) > 1 else root_name
+                shoulder_name = skeleton.bones[2].name if len(skeleton.bones) > 2 else spine_name
+                half = duration / (2 * cadence_scale)
+                # Root: vertical bob (heel-strike compression) over full cycle.
                 for i in range(5):
-                    t = i * step_duration
-                    if t >= duration:
-                        break
-                    y_offset = (0.1 if i % 2 == 0 else -0.1) * amplitude_scale
-                    clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0, y_offset, 0])
-                clip.add_keyframe(
-                    root_name,
-                    ChannelTarget.TRANSLATION,
-                    duration,
-                    [0, 0.1 * amplitude_scale, 0],
-                )
+                    t = min(i * half * 0.5, duration)
+                    y_bob = (0.04 if i % 2 == 0 else -0.04) * amplitude_scale
+                    clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0.0, y_bob, 0.0])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0.0, 0.04 * amplitude_scale, 0.0])
+                # Spine: lateral sway — rocks left/right opposite to foot contact.
+                sway = 0.06 * amplitude_scale
+                clip.add_keyframe(spine_name, ChannelTarget.TRANSLATION, 0.0, [-sway, 0.0, 0.0])
+                clip.add_keyframe(spine_name, ChannelTarget.TRANSLATION, half, [sway, 0.0, 0.0])
+                clip.add_keyframe(spine_name, ChannelTarget.TRANSLATION, duration, [-sway, 0.0, 0.0])
+                # Shoulders: counter-rotate against pelvis sway (FF-style arm swing).
+                arm_rot = 0.08 * amplitude_scale
+                clip.add_keyframe(shoulder_name, ChannelTarget.ROTATION, 0.0, _unit_axis_quat(-arm_rot, axis="z"))
+                clip.add_keyframe(shoulder_name, ChannelTarget.ROTATION, half, _unit_axis_quat(arm_rot, axis="z"))
+                clip.add_keyframe(shoulder_name, ChannelTarget.ROTATION, duration, _unit_axis_quat(-arm_rot, axis="z"))
 
         elif motion_type == "run":
-            # Faster cycle
+            # Tighter four-count stride with stronger vertical drive and
+            # exaggerated arm swing for readable PS2-era run silhouette.
             if skeleton and len(skeleton.bones) > 0:
                 root_name = skeleton.bones[0].name
-                step_duration = duration / (6 * cadence_scale)
-                for i in range(7):
-                    t = i * step_duration
-                    if t >= duration:
-                        break
-                    y_offset = (0.15 if i % 2 == 0 else -0.15) * amplitude_scale
-                    clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0, y_offset, 0])
-                clip.add_keyframe(
-                    root_name,
-                    ChannelTarget.TRANSLATION,
-                    duration,
-                    [0, 0.15 * amplitude_scale, 0],
-                )
+                spine_name = skeleton.bones[1].name if len(skeleton.bones) > 1 else root_name
+                shoulder_name = skeleton.bones[2].name if len(skeleton.bones) > 2 else spine_name
+                quarter = duration / (4 * cadence_scale)
+                # Root: strong vertical drive on each stride.
+                for i in range(5):
+                    t = min(i * quarter, duration)
+                    y_drive = (0.10 if i % 2 == 0 else -0.05) * amplitude_scale
+                    clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, t, [0.0, y_drive, 0.0])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0.0, 0.10 * amplitude_scale, 0.0])
+                # Spine: forward lean during run.
+                lean = 0.12 * amplitude_scale
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, _unit_axis_quat(lean, axis="x"))
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, _unit_axis_quat(lean, axis="x"))
+                # Shoulders: exaggerated counter-swing.
+                arm_rot = 0.15 * amplitude_scale
+                half = duration * 0.5
+                clip.add_keyframe(shoulder_name, ChannelTarget.ROTATION, 0.0, _unit_axis_quat(-arm_rot, axis="z"))
+                clip.add_keyframe(shoulder_name, ChannelTarget.ROTATION, half, _unit_axis_quat(arm_rot, axis="z"))
+                clip.add_keyframe(shoulder_name, ChannelTarget.ROTATION, duration, _unit_axis_quat(-arm_rot, axis="z"))
 
         elif motion_type == "attack":
+            # Five-phase staged combat: rest → anticipate → strike → impact → recover.
+            # Spine and root channels give a clear silhouette change at each phase.
             if skeleton and len(skeleton.bones) > 0:
                 root_name = skeleton.bones[0].name
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
-                clip.add_keyframe(
-                    root_name,
-                    ChannelTarget.TRANSLATION,
-                    duration * 0.4,
-                    [0, 0, 0.25 * amplitude_scale],
-                )
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+                spine_name = skeleton.bones[1].name if len(skeleton.bones) > 1 else root_name
+                a = amplitude_scale
+                # Root: weight-shift into strike then snap back.
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0.0, 0.0, 0.0])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.2, [0.0, 0.0, -0.05 * a])   # anticipate
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.45, [0.0, 0.0, 0.30 * a])   # strike
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.55, [0.0, 0.0, 0.28 * a])   # impact held
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0.0, 0.0, 0.0])               # recover
+                # Spine: rotation arc through swing.
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.2, _unit_axis_quat(-0.08 * a, axis="y"))  # coil
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.45, _unit_axis_quat(0.18 * a, axis="y"))  # uncoil
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.55, _unit_axis_quat(0.15 * a, axis="y"))  # held
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 
         elif motion_type == "defend":
             if skeleton and len(skeleton.bones) > 1:
@@ -248,16 +270,22 @@ class ProceduralBackend(AnimationBackend):
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 
         elif motion_type == "cast":
+            # Five-phase cast: rest → raise arms → channel → release → settle.
             if skeleton and len(skeleton.bones) > 0:
                 root_name = skeleton.bones[0].name
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
-                clip.add_keyframe(
-                    root_name,
-                    ChannelTarget.TRANSLATION,
-                    duration * 0.5,
-                    [0, 0.05 * amplitude_scale, -0.08 * amplitude_scale],
-                )
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+                spine_name = skeleton.bones[1].name if len(skeleton.bones) > 1 else root_name
+                a = amplitude_scale
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0.0, 0.0, 0.0])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.25, [0.0, 0.04 * a, -0.04 * a])  # arms raise
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.55, [0.0, 0.06 * a, -0.08 * a])  # channel held
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.65, [0.0, 0.02 * a, 0.05 * a])   # release lurch
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0.0, 0.0, 0.0])
+                # Spine arches back during channel, then snaps forward on release.
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.25, _unit_axis_quat(-0.06 * a, axis="x"))
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.55, _unit_axis_quat(-0.09 * a, axis="x"))
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.65, _unit_axis_quat(0.08 * a, axis="x"))
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 
         elif motion_type == "hit_react":
             if skeleton and len(skeleton.bones) > 0:
@@ -272,16 +300,21 @@ class ProceduralBackend(AnimationBackend):
                 clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
 
         elif motion_type == "dodge":
+            # Five-phase dodge: brace → crouch dip → burst → air → land.
             if skeleton and len(skeleton.bones) > 0:
                 root_name = skeleton.bones[0].name
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
-                clip.add_keyframe(
-                    root_name,
-                    ChannelTarget.TRANSLATION,
-                    duration * 0.3,
-                    [0.2 * amplitude_scale, 0, 0],
-                )
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+                spine_name = skeleton.bones[1].name if len(skeleton.bones) > 1 else root_name
+                a = amplitude_scale
+                # Root: quick lateral displacement burst then recovery.
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0.0, 0.0, 0.0])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.1, [0.02 * a, -0.04 * a, 0.0])  # brace dip
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.35, [0.30 * a, 0.02 * a, 0.0])  # burst peak
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.75, [0.35 * a, 0.0, 0.0])        # glide
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0.30 * a, 0.0, 0.0])               # land settle
+                # Spine: lean into dodge direction.
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.35, _unit_axis_quat(0.12 * a, axis="z"))
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 
         elif motion_type == "jump_start":
             if skeleton and len(skeleton.bones) > 0:
@@ -548,52 +581,68 @@ class ProceduralBackend(AnimationBackend):
                 clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
 
         elif motion_type == "attack_combo_1":
+            # Combo step 1: left-to-right horizontal swing with spine coil.
             if skeleton and len(skeleton.bones) > 0:
                 root_name = skeleton.bones[0].name
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
-                clip.add_keyframe(
-                    root_name,
-                    ChannelTarget.TRANSLATION,
-                    duration * 0.35,
-                    [-0.1 * amplitude_scale, 0, 0.2 * amplitude_scale],
-                )
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+                spine_name = skeleton.bones[1].name if len(skeleton.bones) > 1 else root_name
+                a = amplitude_scale
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0.0, 0.0, 0.0])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.2, [-0.05 * a, 0.0, -0.04 * a])  # wind-up
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.45, [-0.10 * a, 0.0, 0.22 * a]) # strike
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.55, [-0.10 * a, 0.0, 0.20 * a]) # impact held
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0.0, 0.0, 0.0])
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.2, _unit_axis_quat(-0.12 * a, axis="y"))
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.45, _unit_axis_quat(0.14 * a, axis="y"))
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 
         elif motion_type == "attack_combo_2":
+            # Combo step 2: right-to-left counter-swing continuation.
             if skeleton and len(skeleton.bones) > 0:
                 root_name = skeleton.bones[0].name
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
-                clip.add_keyframe(
-                    root_name,
-                    ChannelTarget.TRANSLATION,
-                    duration * 0.35,
-                    [0.1 * amplitude_scale, 0, 0.22 * amplitude_scale],
-                )
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+                spine_name = skeleton.bones[1].name if len(skeleton.bones) > 1 else root_name
+                a = amplitude_scale
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0.0, 0.0, 0.0])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.2, [0.05 * a, 0.0, -0.04 * a])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.45, [0.10 * a, 0.0, 0.22 * a])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.55, [0.10 * a, 0.0, 0.20 * a])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0.0, 0.0, 0.0])
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.2, _unit_axis_quat(0.12 * a, axis="y"))
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.45, _unit_axis_quat(-0.14 * a, axis="y"))
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 
         elif motion_type == "attack_combo_3":
-            # Finisher — larger lunge
+            # Finisher — overhead lunge with dramatic follow-through.
             if skeleton and len(skeleton.bones) > 0:
                 root_name = skeleton.bones[0].name
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
-                clip.add_keyframe(
-                    root_name,
-                    ChannelTarget.TRANSLATION,
-                    duration * 0.4,
-                    [0, 0.05 * amplitude_scale, 0.35 * amplitude_scale],
-                )
-                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0, 0, 0])
+                spine_name = skeleton.bones[1].name if len(skeleton.bones) > 1 else root_name
+                a = amplitude_scale
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0.0, 0.0, 0.0])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.15, [0.0, 0.08 * a, -0.06 * a])   # raise
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.45, [0.0, -0.02 * a, 0.38 * a])   # slam
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.55, [0.0, -0.04 * a, 0.36 * a])   # impact held
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0.0, 0.0, 0.0])
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.15, _unit_axis_quat(-0.18 * a, axis="x"))
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.45, _unit_axis_quat(0.20 * a, axis="x"))
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 
         elif motion_type == "heavy_attack":
+            # Slow powerful two-handed strike: coil → raise → slam → recovery.
             if skeleton and len(skeleton.bones) > 1:
+                root_name = skeleton.bones[0].name
                 spine_name = skeleton.bones[1].name
+                a = amplitude_scale
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, 0.0, [0.0, 0.0, 0.0])
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.25, [0.0, 0.06 * a, -0.08 * a])   # coil back
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.5, [0.0, 0.02 * a, 0.40 * a])     # slam
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration * 0.6, [0.0, -0.06 * a, 0.38 * a])    # impact
+                clip.add_keyframe(root_name, ChannelTarget.TRANSLATION, duration, [0.0, 0.0, 0.0])
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
-                clip.add_keyframe(
-                    spine_name,
-                    ChannelTarget.ROTATION,
-                    duration * 0.5,
-                    _unit_axis_quat(0.12 * amplitude_scale, axis="x"),
-                )
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.25, _unit_axis_quat(-0.22 * a, axis="x"))  # raise
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.5, _unit_axis_quat(0.25 * a, axis="x"))   # slam
+                clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.6, _unit_axis_quat(0.22 * a, axis="x"))   # held
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 
         elif motion_type == "aerial_attack":

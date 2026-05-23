@@ -313,3 +313,277 @@ class TestGltfExporter:
         with open(gltf_path, "r") as fh:
             gltf = json.load(fh)
         assert len(gltf["animations"]) >= 1
+
+    def test_gltf_animation_extras_preserved(self, tmp_path):
+        """Animation extras (loop flag + event markers) survive glTF round-trip."""
+        model = _make_model()
+        clip = _make_clip()
+        clip.loop = True
+        clip.add_event("footstep_left", 0.25, {"foot": "left"})
+        clip.add_event("hit_window_open", 0.45)
+
+        gltf_path = str(tmp_path / "extras.gltf")
+        GltfExporter().export(model, [clip], path=gltf_path)
+
+        with open(gltf_path, "r") as fh:
+            gltf = json.load(fh)
+        extras = gltf["animations"][0].get("extras", {})
+        assert extras.get("loop") is True
+        assert len(extras.get("events", [])) == 2
+        assert extras["events"][0]["name"] == "footstep_left"
+        assert extras["events"][1]["name"] == "hit_window_open"
+
+    def test_gltf_animation_events_import_roundtrip(self, tmp_path):
+        """Events written to glTF extras are read back correctly by GltfImporter."""
+        model = _make_model()
+        clip = _make_clip()
+        clip.loop = False
+        clip.add_event("cast_release", 0.8, {"spell": "fire"})
+
+        gltf_path = str(tmp_path / "events.gltf")
+        GltfExporter().export(model, [clip], path=gltf_path)
+
+        _, imported_clips = GltfImporter().import_file(gltf_path)
+        assert len(imported_clips) >= 1
+        imported = imported_clips[0]
+        assert imported.loop is False
+        events = imported.get_events()
+        assert len(events) == 1
+        assert events[0]["name"] == "cast_release"
+        assert events[0]["time"] == pytest.approx(0.8)
+        assert events[0]["data"]["spell"] == "fire"
+
+
+# ---------------------------------------------------------------------------
+# .anim event serialization compatibility
+# ---------------------------------------------------------------------------
+
+
+class TestAnimEventSerializationCompat:
+    """Verify backward and forward compatibility of event markers in .anim files."""
+
+    def _make_model(self) -> Model:
+        return _make_model()
+
+    def test_legacy_payload_without_events_imports_cleanly(self):
+        """An .anim file with no events key loads without error and has no events."""
+        model = _make_model()
+        clip = AnimationClip("idle", fps=30.0, loop=True)
+        exporter = AnimExporter()
+        s = exporter.export_string(model, [clip])
+        payload = json.loads(s)
+        # Strip events from the clip dict to simulate a legacy file
+        for c in payload.get("clips", []):
+            c.pop("events", None)
+
+        importer = AnimImporter()
+        _, clips2, _ = importer.import_string(json.dumps(payload))
+        assert len(clips2) == 1
+        assert clips2[0].get_events() == []
+
+    def test_events_round_trip_with_full_metadata(self):
+        """Events + style metadata both survive a complete .anim round-trip."""
+        model = _make_model()
+        clip = AnimationClip("attack", fps=30.0, loop=False)
+        clip.add_event("hit_window_open", 0.4, {"power": "heavy"})
+        clip.add_event("hit_window_close", 0.6)
+        metadata = {
+            "style_profile": "ff10_ps2",
+            "motion_type": "attack",
+            "visual_target": "PS2",
+            "gameplay_target": "Modern",
+            "reference_titles": ["FF10"],
+            "duration": 1.2,
+            "sample_rate": 30.0,
+        }
+        s = AnimExporter().export_string(model, [clip], metadata=metadata)
+        _, clips2, _, meta2 = AnimImporter().import_string(s, include_metadata=True)
+
+        assert len(clips2) == 1
+        events = clips2[0].get_events()
+        assert len(events) == 2
+        assert events[0]["name"] == "hit_window_open"
+        assert events[0]["time"] == pytest.approx(0.4)
+        assert events[0]["data"]["power"] == "heavy"
+        assert events[1]["name"] == "hit_window_close"
+        assert meta2 == metadata
+
+    def test_forward_compat_unknown_event_data_keys_preserved(self):
+        """Unknown keys in event data dict are carried through without loss."""
+        model = _make_model()
+        clip = AnimationClip("cast", fps=30.0, loop=False)
+        clip.add_event("cast_release", 1.0, {"spell": "blizzard", "rank": 3, "aoe": True})
+        s = AnimExporter().export_string(model, [clip])
+        _, clips2, _ = AnimImporter().import_string(s)
+        ev = clips2[0].get_events("cast_release")[0]
+        assert ev["data"]["spell"] == "blizzard"
+        assert ev["data"]["rank"] == 3
+        assert ev["data"]["aoe"] is True
+
+    def test_style_metadata_fields_preserved_across_roundtrip(self):
+        """All style-profile art-direction fields survive the .anim roundtrip."""
+        model = _make_model()
+        clip = AnimationClip("idle")
+        metadata = {
+            "style_profile": "ff7_ps2",
+            "motion_type": "idle",
+            "visual_target": "PS2_visual",
+            "gameplay_target": "modern_gameplay",
+            "reference_titles": ["FF7", "FF8"],
+            "duration": 3.0,
+            "sample_rate": 30.0,
+            "locomotion_category": "idle",
+            "root_motion_policy": "none",
+            "interaction_tags": [],
+            "transition_intent": "entry_loop",
+        }
+        s = AnimExporter().export_string(model, [clip], metadata=metadata)
+        _, _, _, meta2 = AnimImporter().import_string(s, include_metadata=True)
+        for key, expected_val in metadata.items():
+            assert meta2[key] == expected_val, f"Metadata field '{key}' mismatch"
+
+
+# ---------------------------------------------------------------------------
+# Pack format migration (Task 33)
+# ---------------------------------------------------------------------------
+
+class TestAnimDictMigration:
+    """Verify migrate_anim_dict upgrades v1 clip payloads to v2 schema."""
+
+    def test_v1_payload_gains_events_key(self):
+        from animation_engine.io.anim_format import migrate_anim_dict, FORMAT_NAME, FORMAT_VERSION
+        payload = {
+            "format": FORMAT_NAME,
+            "version": FORMAT_VERSION,
+            "clips": [{"name": "walk", "fps": 30.0, "loop": True, "channels": []}],
+            "model": {},
+            "morph_tracks": [],
+        }
+        # Pre-condition: no events key in clip dict.
+        assert "events" not in payload["clips"][0]
+        migrate_anim_dict(payload)
+        assert "events" in payload["clips"][0]
+        assert payload["clips"][0]["events"] == []
+
+    def test_v1_payload_gains_gameplay_tags_key(self):
+        from animation_engine.io.anim_format import migrate_anim_dict, FORMAT_NAME, FORMAT_VERSION
+        payload = {
+            "format": FORMAT_NAME,
+            "version": FORMAT_VERSION,
+            "clips": [{"name": "idle", "fps": 30.0, "loop": True, "channels": []}],
+            "model": {},
+            "morph_tracks": [],
+        }
+        migrate_anim_dict(payload)
+        assert payload["clips"][0]["gameplay_tags"] == {}
+
+    def test_migration_is_idempotent(self):
+        from animation_engine.io.anim_format import migrate_anim_dict, FORMAT_NAME, FORMAT_VERSION
+        payload = {
+            "format": FORMAT_NAME,
+            "version": FORMAT_VERSION,
+            "clips": [{"name": "run", "fps": 30.0, "loop": True, "channels": [],
+                        "events": [{"name": "footstep", "time": 0.5, "data": {}}]}],
+            "model": {},
+            "morph_tracks": [],
+        }
+        migrate_anim_dict(payload)
+        migrate_anim_dict(payload)  # second call must not change events.
+        assert len(payload["clips"][0]["events"]) == 1
+
+    def test_existing_keys_survive_migration(self):
+        from animation_engine.io.anim_format import migrate_anim_dict, FORMAT_NAME, FORMAT_VERSION
+        payload = {
+            "format": FORMAT_NAME,
+            "version": FORMAT_VERSION,
+            "clips": [{"name": "cast", "fps": 60.0, "loop": False, "channels": [],
+                        "style_profile": "ff10_ps2"}],
+            "model": {},
+            "morph_tracks": [],
+            "metadata": {"visual_target": "PS2_visual"},
+        }
+        migrate_anim_dict(payload)
+        assert payload["clips"][0]["style_profile"] == "ff10_ps2"
+        assert payload["metadata"]["visual_target"] == "PS2_visual"
+
+
+# ---------------------------------------------------------------------------
+# Animation retargeting (Task 33)
+# ---------------------------------------------------------------------------
+
+class TestRetargetClip:
+    """Verify retarget_clip remaps bone names and scales translations."""
+
+    def _make_minimal_skeleton(self, bone_length: float):
+        """Return a one-bone skeleton whose root bind-pose translation equals bone_length."""
+        from animation_engine.model.skeleton import Skeleton
+        from animation_engine.math_utils import Transform, Vector3
+        skel = Skeleton("skel")
+        skel.add_bone("root", parent_index=-1,
+                      local_transform=Transform(position=Vector3(0.0, bone_length, 0.0)))
+        return skel
+
+    def test_translation_channel_scaled_by_bone_ratio(self):
+        from animation_engine.animation.clip import AnimationClip, retarget_clip
+        from animation_engine.animation.channel import ChannelTarget
+        clip = AnimationClip("walk")
+        clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [1.0, 0.0, 0.0])
+        clip.add_keyframe("root", ChannelTarget.TRANSLATION, 1.0, [1.0, 0.0, 0.0])
+
+        src_skel = self._make_minimal_skeleton(bone_length=1.0)
+        tgt_skel = self._make_minimal_skeleton(bone_length=2.0)
+        bone_map = {"root": "root"}
+
+        retargeted = retarget_clip(clip, src_skel, tgt_skel, bone_map)
+        ch = retargeted.get_channel("root", ChannelTarget.TRANSLATION)
+        assert ch is not None
+        # Scale = 2.0 / 1.0 = 2.0; x value should be 2.0.
+        val = ch.keyframes[0].value
+        assert abs(val[0] - 2.0) < 1e-5
+
+    def test_rotation_channel_unchanged(self):
+        from animation_engine.animation.clip import AnimationClip, retarget_clip
+        from animation_engine.animation.channel import ChannelTarget
+        clip = AnimationClip("cast")
+        clip.add_keyframe("root", ChannelTarget.ROTATION, 0.0, [0.0, 0.5, 0.0, 0.866])
+
+        src_skel = self._make_minimal_skeleton(bone_length=1.0)
+        tgt_skel = self._make_minimal_skeleton(bone_length=3.0)
+        bone_map = {"root": "root"}
+
+        retargeted = retarget_clip(clip, src_skel, tgt_skel, bone_map)
+        ch = retargeted.get_channel("root", ChannelTarget.ROTATION)
+        assert ch is not None
+        val = ch.keyframes[0].value
+        assert abs(val[1] - 0.5) < 1e-5  # y unchanged
+
+    def test_unmapped_bone_is_dropped(self):
+        from animation_engine.animation.clip import AnimationClip, retarget_clip
+        from animation_engine.animation.channel import ChannelTarget
+        clip = AnimationClip("idle")
+        clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0.0, 0.0, 0.0])
+        clip.add_keyframe("spine", ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+
+        src_skel = self._make_minimal_skeleton(bone_length=1.0)
+        tgt_skel = self._make_minimal_skeleton(bone_length=1.0)
+        bone_map = {"root": "root"}  # spine is not mapped.
+
+        retargeted = retarget_clip(clip, src_skel, tgt_skel, bone_map)
+        assert retargeted.get_channel("spine", ChannelTarget.ROTATION) is None
+        assert retargeted.get_channel("root", ChannelTarget.TRANSLATION) is not None
+
+    def test_events_are_copied_to_retargeted_clip(self):
+        from animation_engine.animation.clip import AnimationClip, retarget_clip
+        from animation_engine.animation.channel import ChannelTarget
+        clip = AnimationClip("run")
+        clip.add_event("footstep_left", 0.4, {"foot": "left"})
+        clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0.0, 0.0, 0.0])
+
+        src_skel = self._make_minimal_skeleton(bone_length=1.0)
+        tgt_skel = self._make_minimal_skeleton(bone_length=1.0)
+        bone_map = {"root": "root"}
+
+        retargeted = retarget_clip(clip, src_skel, tgt_skel, bone_map)
+        events = retargeted.get_events("footstep_left")
+        assert len(events) == 1
+        assert events[0]["time"] == 0.4

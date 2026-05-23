@@ -342,3 +342,247 @@ class TestMorphTrack:
         track2 = MorphTrack.from_dict(d)
         assert track2.morph_name == "open_mouth"
         assert track2.evaluate(0.5) == pytest.approx(1.0)
+
+
+# ---------------------------------------------------------------------------
+# BlendTree — exit_time, condition, and event-timing tests (Tasks 13/14)
+# ---------------------------------------------------------------------------
+
+
+def _make_exit_tree():
+    """Return a two-state tree with an exit-time transition idle→walk."""
+    bone_names = ["hip"]
+
+    def _make_clip(name: str, duration: float = 1.0) -> AnimationClip:
+        c = AnimationClip(name, fps=30.0)
+        c.add_keyframe("hip", ChannelTarget.TRANSLATION, 0.0, [0, 1, 0])
+        c.add_keyframe("hip", ChannelTarget.TRANSLATION, duration, [0, 1, 0])
+        return c
+
+    idle_clip = _make_clip("idle", duration=1.0)
+    walk_clip = _make_clip("walk", duration=1.0)
+
+    tree = BlendTree(bone_names)
+    tree.add_state(BlendState("idle", idle_clip))
+    tree.add_state(BlendState("walk", walk_clip))
+    tree.add_transition(BlendTransition("idle", "walk", duration=0.2, has_exit_time=True))
+    tree.set_initial_state("idle")
+    return tree
+
+
+class TestBlendTreeExitTime:
+    def test_exit_time_deferred_until_clip_ends(self):
+        """Transition does not start until local_time reaches clip duration."""
+        tree = _make_exit_tree()
+        # Trigger while clip is near the start — should NOT start immediately
+        tree.trigger("walk")
+        tree.update(0.016)
+        assert tree.current_state_name == "idle"
+        assert not tree.is_transitioning
+
+    def test_exit_time_transition_fires_at_clip_end(self):
+        """Transition begins once the clip has played through."""
+        tree = _make_exit_tree()
+        tree.trigger("walk")
+        # Advance beyond the 1-second clip duration (80 * 0.016 = 1.28 s > 1.0 s clip)
+        for _ in range(80):
+            tree.update(0.016)
+        # Transition should have started (and possibly completed by now)
+        assert tree.current_state_name in ("idle", "walk")
+        # Advance a bit more to let the 0.2 s crossfade finish
+        for _ in range(20):
+            tree.update(0.016)
+        assert tree.current_state_name == "walk"
+
+    def test_exit_time_flag_not_set_transitions_immediately(self):
+        """When has_exit_time=False, trigger starts the crossfade right away."""
+        bone_names = ["hip"]
+        idle_clip = AnimationClip("idle", fps=30.0)
+        idle_clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 0.0, [0, 1, 0])
+        idle_clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 1.0, [0, 1, 0])
+        walk_clip = AnimationClip("walk", fps=30.0)
+        walk_clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 0.0, [0, 1, 0])
+        walk_clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 1.0, [0, 1, 0])
+
+        tree = BlendTree(bone_names)
+        tree.add_state(BlendState("idle", idle_clip))
+        tree.add_state(BlendState("walk", walk_clip))
+        tree.add_transition(BlendTransition("idle", "walk", duration=0.2, has_exit_time=False))
+        tree.set_initial_state("idle")
+        tree.trigger("walk")
+        tree.update(0.016)
+        assert tree.is_transitioning
+
+
+class TestBlendTreeCondition:
+    def _make_condition_tree(self):
+        """Return a tree with a condition-based idle→run transition."""
+        bone_names = ["hip"]
+        idle_clip = AnimationClip("idle", fps=30.0)
+        idle_clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 0.0, [0, 1, 0])
+        idle_clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 1.0, [0, 1, 0])
+        run_clip = AnimationClip("run", fps=30.0)
+        run_clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 0.0, [0, 1, 0])
+        run_clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 1.0, [0.5, 1, 0])
+
+        tree = BlendTree(bone_names)
+        tree.add_state(BlendState("idle", idle_clip))
+        tree.add_state(BlendState("run", run_clip))
+        tree.add_transition(
+            BlendTransition(
+                "idle", "run", duration=0.15,
+                condition=lambda ctx: ctx.get("speed", 0) > 1.0,
+            )
+        )
+        tree.set_initial_state("idle")
+        return tree
+
+    def test_condition_not_met_no_auto_transition(self):
+        """Condition-based transition does not fire when speed is low."""
+        tree = self._make_condition_tree()
+        tree.set_parameter("speed", 0.5)
+        for _ in range(5):
+            tree.update(0.016)
+        assert tree.current_state_name == "idle"
+        assert not tree.is_transitioning
+
+    def test_condition_met_auto_transitions(self):
+        """Condition-based transition fires automatically once speed is high."""
+        tree = self._make_condition_tree()
+        tree.set_parameter("speed", 2.0)
+        tree.update(0.016)
+        assert tree.is_transitioning or tree.current_state_name == "run"
+
+    def test_context_merge_external_overrides_stored(self):
+        """External context dict passed to update() overrides set_parameter values."""
+        tree = self._make_condition_tree()
+        tree.set_parameter("speed", 0.0)  # Would NOT trigger
+        # External ctx overrides — should trigger the condition
+        tree.update(0.016, context={"speed": 3.0})
+        assert tree.is_transitioning or tree.current_state_name == "run"
+
+
+class TestAnimationClipEventTiming:
+    def _make_clip_with_events(self) -> AnimationClip:
+        clip = AnimationClip("attack", fps=30.0, loop=False)
+        clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 0.0, [0, 1, 0])
+        clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 1.0, [0, 1, 0])
+        clip.add_event("hit_window_open", 0.3, {"power": "heavy"})
+        clip.add_event("hit_window_close", 0.7)
+        clip.add_event("footstep_left", 0.5)
+        return clip
+
+    def test_get_events_in_window_returns_correct_events(self):
+        """Events within the time window [0.25, 0.55) are returned."""
+        clip = self._make_clip_with_events()
+        events = clip.get_events_in_window(0.25, 0.55)
+        names = [e["name"] for e in events]
+        assert "hit_window_open" in names
+        assert "footstep_left" in names
+        assert "hit_window_close" not in names
+
+    def test_get_events_by_name_filters_correctly(self):
+        clip = self._make_clip_with_events()
+        hit_open = clip.get_events("hit_window_open")
+        assert len(hit_open) == 1
+        assert hit_open[0]["time"] == pytest.approx(0.3)
+        assert hit_open[0]["data"]["power"] == "heavy"
+
+    def test_get_events_returns_all_when_no_filter(self):
+        clip = self._make_clip_with_events()
+        all_events = clip.get_events()
+        assert len(all_events) == 3
+
+    def test_event_data_defaults_to_empty_dict(self):
+        clip = AnimationClip("idle")
+        clip.add_event("marker", 0.5)
+        ev = clip.get_events("marker")[0]
+        assert ev["data"] == {}
+
+    def test_events_sorted_by_time(self):
+        clip = AnimationClip("test")
+        clip.add_event("late", 0.9)
+        clip.add_event("early", 0.1)
+        clip.add_event("mid", 0.5)
+        events = clip.get_events()
+        times = [e["time"] for e in events]
+        assert times == sorted(times)
+
+    def test_parameter_driven_clip_select_via_set_parameter(self):
+        """BlendTree set_parameter context carries into condition checks."""
+        bone_names = ["hip"]
+        idle_clip = AnimationClip("idle", fps=30.0)
+        idle_clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 0.0, [0, 1, 0])
+        idle_clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 1.0, [0, 1, 0])
+        run_clip = AnimationClip("run", fps=30.0)
+        run_clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 0.0, [0, 1, 0])
+        run_clip.add_keyframe("hip", ChannelTarget.TRANSLATION, 1.0, [0.5, 1, 0])
+
+        tree = BlendTree(bone_names)
+        tree.add_state(BlendState("idle", idle_clip))
+        tree.add_state(BlendState("run", run_clip))
+        tree.add_transition(
+            BlendTransition(
+                "idle", "run", duration=0.1,
+                condition=lambda ctx: ctx.get("moving", False),
+            )
+        )
+        tree.set_initial_state("idle")
+
+        # Before setting parameter — stays idle
+        for _ in range(3):
+            tree.update(0.016)
+        assert tree.current_state_name == "idle"
+
+        # Set parameter — condition should now trigger auto-transition
+        tree.set_parameter("moving", True)
+        tree.update(0.016)
+        assert tree.is_transitioning or tree.current_state_name == "run"
+
+
+# ---------------------------------------------------------------------------
+# CPU Skinning (Task 32)
+# ---------------------------------------------------------------------------
+
+class TestCpuSkinMesh:
+    """Verify cpu_skin_mesh applies skin matrices to vertex positions."""
+
+    def _make_single_vertex_mesh(self):
+        from animation_engine.model.mesh import Mesh, Vertex
+        from animation_engine.math_utils import Vector3, Vector2, Vector4
+        mesh = Mesh("test")
+        v = Vertex(
+            position=Vector3(0.0, 1.0, 0.0),
+            normal=Vector3(0.0, 1.0, 0.0),
+            tangent=Vector4(1.0, 0.0, 0.0, 1.0),
+            uv0=Vector2(0.0, 0.0),
+            bone_indices=[0, 0, 0, 0],
+            bone_weights=[1.0, 0.0, 0.0, 0.0],
+        )
+        mesh.vertices.append(v)
+        mesh.indices.extend([0, 0, 0])
+        return mesh
+
+    def test_identity_skin_matrix_preserves_positions(self):
+        from animation_engine.runtime.skinning import cpu_skin_mesh
+        from animation_engine.math_utils import Matrix4x4
+        mesh = self._make_single_vertex_mesh()
+        skinned = cpu_skin_mesh(mesh, [Matrix4x4.identity()])
+        assert len(skinned.vertices) == 1
+        v = skinned.vertices[0]
+        assert abs(v.position.x - 0.0) < 1e-5
+        assert abs(v.position.y - 1.0) < 1e-5
+        assert abs(v.position.z - 0.0) < 1e-5
+
+    def test_translation_skin_matrix_moves_vertex(self):
+        from animation_engine.runtime.skinning import cpu_skin_mesh
+        from animation_engine.math_utils import Matrix4x4, Vector3
+        mesh = self._make_single_vertex_mesh()
+        # Skin matrix that adds (5, 0, 0) translation.
+        tx = Matrix4x4.from_translation(Vector3(5.0, 0.0, 0.0))
+        skinned = cpu_skin_mesh(mesh, [tx])
+        v = skinned.vertices[0]
+        # Vertex was at (0,1,0); after translation skin should be near (5,1,0).
+        assert abs(v.position.x - 5.0) < 1e-4
+        assert abs(v.position.y - 1.0) < 1e-4
+        assert len(skinned.vertices) == len(mesh.vertices)

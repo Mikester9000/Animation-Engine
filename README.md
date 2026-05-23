@@ -23,11 +23,11 @@ games such as *Final Fantasy VII Remake* and *Final Fantasy XV*.
 | **Export: glTF 2.0** | Industry-standard interchange for Unreal, Unity, Godot, Blender, and more |
 | **Import** | Re-import `.anim` and `.gltf` / `.glb` files back into the engine |
 | **Timeline Editor** | Tkinter-based GUI with timeline, bone hierarchy, and properties panel |
-| **43-Clip Taxonomy** | Complete motion library covering idle, locomotion, traversal, combat, reactions, and interactions |
+| **57-Clip Taxonomy** | Complete motion library covering idle, locomotion, traversal, combat, reactions, and interactions |
 | **Animation Events** | Named timeline markers (footstep, hit-window, cast-release, etc.) fire runtime callbacks |
 | **Root-Motion Channel** | `Animator.root_motion_delta` exposes per-frame root translation for physics handoff |
 | **Style Profiles** | Five built-in PS2-era JRPG profiles (FF7–FF12) with per-motion cadence and amplitude tuning |
-| **Pack Generation** | `animation-engine generate-pack` produces a full 43-clip library in one command |
+| **Pack Generation** | `animation-engine generate-pack` produces a full 57-clip library in one command |
 | **Quality Gating** | `animation-engine validate-pack` enforces category coverage, transition continuity, and loop seamlessness |
 
 ---
@@ -44,7 +44,7 @@ animation_engine/
 ├── integration/     AnimationPipeline, StyleProfile, MotionStyleVariants
 ├── qa/              ClipValidator, LoopAnalyzer, SkeletonValidator, StyleValidator
 └── editor/          Tkinter timeline + bone editor (AnimationEditor)
-tests/               pytest test suite (176 tests)
+tests/               pytest test suite (225 tests)
 ```
 
 ---
@@ -55,7 +55,7 @@ All generated content follows these output rules:
 
 - **Visual target:** Aim for the highest-quality JRPG animation presentation that still feels believable on **PlayStation 2-class hardware**.
 - **Reference mix:** Silhouettes, posing clarity, and animation readability aligned with *Final Fantasy VII*, *VIII*, *IX*, *X*, and *XII* era goals.
-- **Gameplay coverage:** The 43-clip motion library supports modern gameplay — seamless traversal, reactive combat, dodges, spell casting, hit reactions, combo attacks, climb cycles, and celebratory states.
+- **Gameplay coverage:** The 57-clip motion library supports modern gameplay — seamless traversal, reactive combat, dodges, spell casting, hit reactions, combo attacks, climb cycles, and celebratory states.
 - **Profile metadata:** Generated packs embed visual target, gameplay target, reference titles, semantic metadata, and schema version in manifests and per-clip `.anim` files.
 - **Category gates:** `validate-pack` rejects packs missing minimum coverage for exploration (≥3 clips), combat (≥3 clips), traversal (≥2 clips), and reaction (≥2 clips) categories.
 - **Transition continuity:** Packs with partial combo/climb/cast/jump groups are rejected to prevent broken animation chains at runtime.
@@ -64,17 +64,17 @@ Use the built-in style profiles when generating packs; they are the repository's
 
 ---
 
-## Clip Taxonomy (43 Motions)
+## Clip Taxonomy (57 Motions)
 
 | Category | Motions |
 |----------|---------|
 | **Idle** | `idle`, `idle_alt`, `idle_combat` |
-| **Exploration** | `walk`, `run`, `run_start`, `run_stop`, `sprint`, `strafe_left`, `strafe_right`, `crouch`, `crouch_walk`, `turn_left`, `turn_right` |
-| **Traversal** | `jump_start`, `jump_loop`, `jump_land`, `roll`, `vault`, `climb_start`, `climb_loop`, `climb_stop` |
+| **Exploration** | `walk`, `run`, `run_start`, `run_stop`, `sprint`, `sprint_start`, `sprint_stop`, `strafe_left`, `strafe_right`, `backstep`, `crouch`, `crouch_walk`, `guard_walk`, `turn_left`, `turn_right` |
+| **Traversal** | `jump_start`, `jump_loop`, `jump_land`, `land_hard`, `land_roll`, `roll`, `vault`, `climb_start`, `climb_loop`, `climb_stop`, `ladder_up`, `ladder_down`, `swim_idle`, `swim_forward` |
 | **Combat / Offense** | `attack`, `attack_combo_1`, `attack_combo_2`, `attack_combo_3`, `heavy_attack`, `aerial_attack`, `cast`, `cast_channel`, `cast_release` |
-| **Combat / Defense** | `defend`, `block`, `parry`, `dodge` |
-| **Reactions** | `hit_react`, `stagger`, `knockdown`, `get_up`, `death` |
-| **Interactions** | `interact`, `pickup`, `victory` |
+| **Combat / Defense** | `defend`, `block`, `block_break`, `parry`, `dodge` |
+| **Reactions** | `hit_react`, `stagger`, `knockdown`, `knockdown_air`, `get_up`, `death` |
+| **Interactions** | `interact`, `pickup`, `victory`, `emote_cheer` |
 
 ---
 
@@ -200,7 +200,7 @@ Events are serialised inside the `.anim` file and survive round-trips through `A
 ## Production Pack Workflow
 
 ```bash
-# 1. Generate a complete 43-clip pack for the ff10_ps2 profile
+# 1. Generate a complete 57-clip pack for the ff10_ps2 profile
 animation-engine generate-pack \
     --skeleton-anim assets/hero_source.anim \
     --output-dir    assets/hero_pack \
@@ -326,7 +326,7 @@ velocity blending — the same algorithm used in FF15.
 ### Integration layer (`integration`)
 - **StyleProfile** — frozen dataclass encoding art direction, required clip list, and `MotionStyleVariants`.
 - **MotionStyleVariants** — per-motion-class cadence multipliers (locomotion, melee, magic, reaction, traversal).
-- **AnimationPipeline** — generates all 43 clips for a profile, writes `.anim` files, and produces `pack_manifest.json`.
+- **AnimationPipeline** — generates all 57 clips for a profile, writes `.anim` files, and produces `pack_manifest.json`.
 
 ### QA layer (`qa`)
 - **ClipValidator** — per-clip quaternion normalisation, position-range, and seam checks.

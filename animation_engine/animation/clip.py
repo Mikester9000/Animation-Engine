@@ -80,6 +80,10 @@ class AnimationClip:
             events = [e for e in events if e["name"] == name]
         return events
 
+    def get_events_in_window(self, start: float, end: float) -> List[dict]:
+        """Return events whose time satisfies start <= time < end, sorted by time."""
+        return [e for e in self.get_events() if start <= e["time"] < end]
+
     # -- channel management --------------------------------------------------
 
     def get_channel(
@@ -214,3 +218,114 @@ class AnimationClip:
             f"duration={self.duration:.2f}s, "
             f"channels={len(self._channels)})"
         )
+
+
+# ---------------------------------------------------------------------------
+# Retargeting utility
+# ---------------------------------------------------------------------------
+
+def retarget_clip(
+    clip: "AnimationClip",
+    source_skel: object,
+    target_skel: object,
+    bone_map: Dict[str, str],
+) -> "AnimationClip":
+    """Return a new AnimationClip retargeted from *source_skel* to *target_skel*.
+
+    Bone names are remapped using *bone_map* (``{source_name: target_name}``).
+    Translation channels are scaled by the ratio of target-to-source bone
+    chain lengths so proportions match the target skeleton.  Rotation channels
+    are copied unchanged, preserving pose intent across skeleton variants.
+
+    Parameters
+    ----------
+    clip:
+        Source animation clip (authored for *source_skel*).
+    source_skel:
+        Source skeleton (``animation_engine.model.skeleton.Skeleton``).
+    target_skel:
+        Destination skeleton.  Must contain all bones referenced by the
+        *bone_map* target values.
+    bone_map:
+        Dict mapping source bone names to target bone names.  Bones not
+        present in *bone_map* are dropped from the output clip.
+
+    Returns
+    -------
+    A new :class:`AnimationClip` with remapped channels.
+    """
+    from copy import deepcopy
+    from .channel import AnimationChannel, ChannelTarget
+    from .keyframe import Keyframe
+
+    # Build a lookup dict once to avoid O(n) scan per channel.
+    def _build_bone_lookup(skel) -> dict:
+        if hasattr(skel, "get_bone"):
+            return {}  # get_bone handles lookup directly.
+        return {b.name: b for b in getattr(skel, "bones", [])}
+
+    src_lookup = _build_bone_lookup(source_skel)
+    tgt_lookup = _build_bone_lookup(target_skel)
+
+    def _bone_length(skel, lookup: dict, name: str) -> float:
+        """Return the bind-pose distance from a bone to its parent (its 'length')."""
+        bone = skel.get_bone(name) if hasattr(skel, "get_bone") else lookup.get(name)
+        if bone is None:
+            return 1.0
+        pos = bone.local_transform.position
+        return max(1e-6, (pos.x ** 2 + pos.y ** 2 + pos.z ** 2) ** 0.5)
+
+    new_clip = AnimationClip(
+        name=f"{clip.name}_retargeted",
+        fps=clip.fps,
+        loop=clip.loop,
+    )
+
+    for (bone_name, target), ch in clip._channels.items():
+        mapped_name = bone_map.get(bone_name)
+        if mapped_name is None:
+            continue
+
+        new_ch = AnimationChannel(mapped_name, target)
+        if target == ChannelTarget.TRANSLATION:
+            src_len = _bone_length(source_skel, src_lookup, bone_name)
+            tgt_len = _bone_length(target_skel, tgt_lookup, mapped_name)
+            scale = tgt_len / src_len
+            for kf in ch.keyframes:
+                scaled_value = [v * scale for v in kf.value]
+                scaled_in_tangent = (
+                    [v * scale for v in kf.in_tangent]
+                    if isinstance(kf.in_tangent, list)
+                    else kf.in_tangent * scale
+                )
+                scaled_out_tangent = (
+                    [v * scale for v in kf.out_tangent]
+                    if isinstance(kf.out_tangent, list)
+                    else kf.out_tangent * scale
+                )
+                new_ch.add_keyframe(
+                    Keyframe(
+                        time=kf.time,
+                        value=scaled_value,
+                        in_tangent=scaled_in_tangent,
+                        out_tangent=scaled_out_tangent,
+                        interp=kf.interp,
+                    )
+                )
+        else:
+            for kf in ch.keyframes:
+                new_ch.add_keyframe(
+                    Keyframe(
+                        time=kf.time,
+                        value=deepcopy(kf.value),
+                        in_tangent=deepcopy(kf.in_tangent),
+                        out_tangent=deepcopy(kf.out_tangent),
+                        interp=kf.interp,
+                    )
+                )
+        new_clip._channels[(mapped_name, target)] = new_ch
+
+    for ev in clip._events:
+        new_clip.add_event(ev["name"], ev["time"], dict(ev.get("data") or {}))
+
+    return new_clip

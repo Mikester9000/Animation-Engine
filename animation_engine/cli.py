@@ -380,6 +380,31 @@ def _cmd_launch_production_gui(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_batch_export_headers(args: argparse.Namespace) -> int:
+    """Convert every clip in a pack manifest to a C++ header file."""
+    import sys
+
+    from compat.anim_to_cpp_header import convert_pack_manifest
+
+    manifest_path = Path(args.manifest)
+    output_dir = Path(args.output_dir)
+
+    if not manifest_path.is_file():
+        print(f"[error] Manifest not found: {manifest_path}", file=sys.stderr)
+        return 1
+
+    try:
+        written = convert_pack_manifest(manifest_path, output_dir)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[error] Batch export failed: {exc}", file=sys.stderr)
+        return 1
+
+    for p in written:
+        print(f"[ok] {p}")
+    print(f"\n{len(written)} header(s) written to {output_dir}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     from animation_engine.integration.style_profiles import DEFAULT_STYLE_PROFILE_ID
 
@@ -540,6 +565,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="Fail with non-zero exit code if any clip generation fails",
     )
     build_production_pack_parser.set_defaults(func=_cmd_build_production_pack)
+
+    # batch-export-headers command
+    batch_export_parser = subparsers.add_parser(
+        "batch-export-headers",
+        help="Convert all clips in a pack manifest to C++ header files",
+    )
+    batch_export_parser.add_argument(
+        "--manifest",
+        required=True,
+        metavar="PATH",
+        help="Path to the pack_manifest.json to process",
+    )
+    batch_export_parser.add_argument(
+        "--output-dir",
+        required=True,
+        metavar="DIR",
+        help="Directory where generated .hpp header files will be written",
+    )
+    batch_export_parser.set_defaults(func=_cmd_batch_export_headers)
 
     # launch-production-gui command
     launch_production_gui_parser = subparsers.add_parser(
