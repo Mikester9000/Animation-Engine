@@ -1,0 +1,99 @@
+{
+  "format": "AnimEngine",
+  "version": "1.0",
+  "model": {
+    "name": "HeroSource",
+    "tags": [],
+    "meshes": [],
+    "materials": {},
+    "skeleton": {
+      "name": "HeroRig",
+      "bones": [
+        {
+          "name": "root",
+          "index": 0,
+          "parent_index": -1,
+          "local_transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "inverse_bind": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "name": "spine_01",
+          "index": 1,
+          "parent_index": 0,
+          "local_transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "inverse_bind": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  },
+  "clips": [],
+  "morph_tracks": []
+}

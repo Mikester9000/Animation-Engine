@@ -40,3 +40,5 @@ Thumbs.db
 *.gltf
 *.bin
 *.glb
+!assets/hero_source.anim
+!assets/hero_pack/*.anim

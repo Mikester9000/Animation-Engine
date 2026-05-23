@@ -1,0 +1,503 @@
+{
+  "schema_version": "2.0",
+  "status": "ok",
+  "profile_id": "ff10_ps2",
+  "profile_label": "Final Fantasy X inspired (PS2-era cinematic pacing)",
+  "visual_target": "High-end PS2-era JRPG presentation with readable silhouettes, cinematic poses, and asset complexity suitable for PlayStation 2-class hardware.",
+  "gameplay_target": "Animation packs must support modern open-world JRPG gameplay beats similar to Final Fantasy VII Remake and Final Fantasy XV.",
+  "reference_titles": [
+    "Final Fantasy VII",
+    "Final Fantasy VIII",
+    "Final Fantasy IX",
+    "Final Fantasy X",
+    "Final Fantasy XII"
+  ],
+  "required_clips": [
+    "idle",
+    "idle_alt",
+    "idle_combat",
+    "walk",
+    "run",
+    "run_start",
+    "run_stop",
+    "sprint",
+    "sprint_start",
+    "sprint_stop",
+    "backstep",
+    "strafe_left",
+    "strafe_right",
+    "crouch",
+    "crouch_walk",
+    "guard_walk",
+    "turn_left",
+    "turn_right",
+    "jump_start",
+    "jump_loop",
+    "jump_land",
+    "land_hard",
+    "land_roll",
+    "roll",
+    "vault",
+    "climb_start",
+    "climb_loop",
+    "climb_stop",
+    "ladder_up",
+    "ladder_down",
+    "swim_idle",
+    "swim_forward",
+    "swim_surface",
+    "attack",
+    "attack_combo_1",
+    "attack_combo_2",
+    "attack_combo_3",
+    "heavy_attack",
+    "aerial_attack",
+    "cast",
+    "cast_channel",
+    "cast_release",
+    "defend",
+    "block",
+    "parry",
+    "dodge",
+    "hit_react",
+    "stagger",
+    "knockdown",
+    "knockdown_air",
+    "block_break",
+    "get_up",
+    "death",
+    "interact",
+    "pickup",
+    "victory",
+    "emote_cheer"
+  ],
+  "ordered_files": [
+    {
+      "motion_type": "idle",
+      "path": "idle.anim",
+      "duration": 3.0
+    },
+    {
+      "motion_type": "idle_alt",
+      "path": "idle_alt.anim",
+      "duration": 3.5
+    },
+    {
+      "motion_type": "idle_combat",
+      "path": "idle_combat.anim",
+      "duration": 2.0
+    },
+    {
+      "motion_type": "walk",
+      "path": "walk.anim",
+      "duration": 2.0
+    },
+    {
+      "motion_type": "run",
+      "path": "run.anim",
+      "duration": 1.5
+    },
+    {
+      "motion_type": "run_start",
+      "path": "run_start.anim",
+      "duration": 0.4
+    },
+    {
+      "motion_type": "run_stop",
+      "path": "run_stop.anim",
+      "duration": 0.5
+    },
+    {
+      "motion_type": "sprint",
+      "path": "sprint.anim",
+      "duration": 1.2
+    },
+    {
+      "motion_type": "sprint_start",
+      "path": "sprint_start.anim",
+      "duration": 0.35
+    },
+    {
+      "motion_type": "sprint_stop",
+      "path": "sprint_stop.anim",
+      "duration": 0.45
+    },
+    {
+      "motion_type": "backstep",
+      "path": "backstep.anim",
+      "duration": 0.5
+    },
+    {
+      "motion_type": "strafe_left",
+      "path": "strafe_left.anim",
+      "duration": 0.9
+    },
+    {
+      "motion_type": "strafe_right",
+      "path": "strafe_right.anim",
+      "duration": 0.9
+    },
+    {
+      "motion_type": "crouch",
+      "path": "crouch.anim",
+      "duration": 0.6
+    },
+    {
+      "motion_type": "crouch_walk",
+      "path": "crouch_walk.anim",
+      "duration": 1.6
+    },
+    {
+      "motion_type": "guard_walk",
+      "path": "guard_walk.anim",
+      "duration": 1.8
+    },
+    {
+      "motion_type": "turn_left",
+      "path": "turn_left.anim",
+      "duration": 0.6
+    },
+    {
+      "motion_type": "turn_right",
+      "path": "turn_right.anim",
+      "duration": 0.6
+    },
+    {
+      "motion_type": "jump_start",
+      "path": "jump_start.anim",
+      "duration": 0.4
+    },
+    {
+      "motion_type": "jump_loop",
+      "path": "jump_loop.anim",
+      "duration": 0.8
+    },
+    {
+      "motion_type": "jump_land",
+      "path": "jump_land.anim",
+      "duration": 0.5
+    },
+    {
+      "motion_type": "land_hard",
+      "path": "land_hard.anim",
+      "duration": 0.6
+    },
+    {
+      "motion_type": "land_roll",
+      "path": "land_roll.anim",
+      "duration": 0.7
+    },
+    {
+      "motion_type": "roll",
+      "path": "roll.anim",
+      "duration": 0.6
+    },
+    {
+      "motion_type": "vault",
+      "path": "vault.anim",
+      "duration": 0.5
+    },
+    {
+      "motion_type": "climb_start",
+      "path": "climb_start.anim",
+      "duration": 0.5
+    },
+    {
+      "motion_type": "climb_loop",
+      "path": "climb_loop.anim",
+      "duration": 1.2
+    },
+    {
+      "motion_type": "climb_stop",
+      "path": "climb_stop.anim",
+      "duration": 0.5
+    },
+    {
+      "motion_type": "ladder_up",
+      "path": "ladder_up.anim",
+      "duration": 1.0
+    },
+    {
+      "motion_type": "ladder_down",
+      "path": "ladder_down.anim",
+      "duration": 1.0
+    },
+    {
+      "motion_type": "swim_idle",
+      "path": "swim_idle.anim",
+      "duration": 2.0
+    },
+    {
+      "motion_type": "swim_forward",
+      "path": "swim_forward.anim",
+      "duration": 1.4
+    },
+    {
+      "motion_type": "swim_surface",
+      "path": "swim_surface.anim",
+      "duration": 0.8
+    },
+    {
+      "motion_type": "attack",
+      "path": "attack.anim",
+      "duration": 1.2
+    },
+    {
+      "motion_type": "attack_combo_1",
+      "path": "attack_combo_1.anim",
+      "duration": 1.0
+    },
+    {
+      "motion_type": "attack_combo_2",
+      "path": "attack_combo_2.anim",
+      "duration": 1.0
+    },
+    {
+      "motion_type": "attack_combo_3",
+      "path": "attack_combo_3.anim",
+      "duration": 1.1
+    },
+    {
+      "motion_type": "heavy_attack",
+      "path": "heavy_attack.anim",
+      "duration": 1.4
+    },
+    {
+      "motion_type": "aerial_attack",
+      "path": "aerial_attack.anim",
+      "duration": 0.9
+    },
+    {
+      "motion_type": "cast",
+      "path": "cast.anim",
+      "duration": 1.4
+    },
+    {
+      "motion_type": "cast_channel",
+      "path": "cast_channel.anim",
+      "duration": 1.2
+    },
+    {
+      "motion_type": "cast_release",
+      "path": "cast_release.anim",
+      "duration": 0.8
+    },
+    {
+      "motion_type": "defend",
+      "path": "defend.anim",
+      "duration": 1.1
+    },
+    {
+      "motion_type": "block",
+      "path": "block.anim",
+      "duration": 1.0
+    },
+    {
+      "motion_type": "parry",
+      "path": "parry.anim",
+      "duration": 0.6
+    },
+    {
+      "motion_type": "dodge",
+      "path": "dodge.anim",
+      "duration": 0.8
+    },
+    {
+      "motion_type": "hit_react",
+      "path": "hit_react.anim",
+      "duration": 0.9
+    },
+    {
+      "motion_type": "stagger",
+      "path": "stagger.anim",
+      "duration": 0.7
+    },
+    {
+      "motion_type": "knockdown",
+      "path": "knockdown.anim",
+      "duration": 1.0
+    },
+    {
+      "motion_type": "knockdown_air",
+      "path": "knockdown_air.anim",
+      "duration": 1.2
+    },
+    {
+      "motion_type": "block_break",
+      "path": "block_break.anim",
+      "duration": 0.7
+    },
+    {
+      "motion_type": "get_up",
+      "path": "get_up.anim",
+      "duration": 0.9
+    },
+    {
+      "motion_type": "death",
+      "path": "death.anim",
+      "duration": 1.8
+    },
+    {
+      "motion_type": "interact",
+      "path": "interact.anim",
+      "duration": 0.8
+    },
+    {
+      "motion_type": "pickup",
+      "path": "pickup.anim",
+      "duration": 0.7
+    },
+    {
+      "motion_type": "victory",
+      "path": "victory.anim",
+      "duration": 2.5
+    },
+    {
+      "motion_type": "emote_cheer",
+      "path": "emote_cheer.anim",
+      "duration": 2.0
+    }
+  ],
+  "expected": 57,
+  "generated": 57,
+  "files": {
+    "idle": "idle.anim",
+    "idle_alt": "idle_alt.anim",
+    "idle_combat": "idle_combat.anim",
+    "walk": "walk.anim",
+    "run": "run.anim",
+    "run_start": "run_start.anim",
+    "run_stop": "run_stop.anim",
+    "sprint": "sprint.anim",
+    "sprint_start": "sprint_start.anim",
+    "sprint_stop": "sprint_stop.anim",
+    "backstep": "backstep.anim",
+    "strafe_left": "strafe_left.anim",
+    "strafe_right": "strafe_right.anim",
+    "crouch": "crouch.anim",
+    "crouch_walk": "crouch_walk.anim",
+    "guard_walk": "guard_walk.anim",
+    "turn_left": "turn_left.anim",
+    "turn_right": "turn_right.anim",
+    "jump_start": "jump_start.anim",
+    "jump_loop": "jump_loop.anim",
+    "jump_land": "jump_land.anim",
+    "land_hard": "land_hard.anim",
+    "land_roll": "land_roll.anim",
+    "roll": "roll.anim",
+    "vault": "vault.anim",
+    "climb_start": "climb_start.anim",
+    "climb_loop": "climb_loop.anim",
+    "climb_stop": "climb_stop.anim",
+    "ladder_up": "ladder_up.anim",
+    "ladder_down": "ladder_down.anim",
+    "swim_idle": "swim_idle.anim",
+    "swim_forward": "swim_forward.anim",
+    "swim_surface": "swim_surface.anim",
+    "attack": "attack.anim",
+    "attack_combo_1": "attack_combo_1.anim",
+    "attack_combo_2": "attack_combo_2.anim",
+    "attack_combo_3": "attack_combo_3.anim",
+    "heavy_attack": "heavy_attack.anim",
+    "aerial_attack": "aerial_attack.anim",
+    "cast": "cast.anim",
+    "cast_channel": "cast_channel.anim",
+    "cast_release": "cast_release.anim",
+    "defend": "defend.anim",
+    "block": "block.anim",
+    "parry": "parry.anim",
+    "dodge": "dodge.anim",
+    "hit_react": "hit_react.anim",
+    "stagger": "stagger.anim",
+    "knockdown": "knockdown.anim",
+    "knockdown_air": "knockdown_air.anim",
+    "block_break": "block_break.anim",
+    "get_up": "get_up.anim",
+    "death": "death.anim",
+    "interact": "interact.anim",
+    "pickup": "pickup.anim",
+    "victory": "victory.anim",
+    "emote_cheer": "emote_cheer.anim"
+  },
+  "failed": {},
+  "backend_name": "procedural",
+  "seed": null,
+  "sample_rate": 30.0,
+  "generation_version": 2,
+  "gameplay_semantic": {
+    "category_coverage": {
+      "idle": [
+        "idle",
+        "idle_alt",
+        "idle_combat",
+        "victory"
+      ],
+      "exploration": [
+        "walk",
+        "run",
+        "run_start",
+        "run_stop",
+        "sprint",
+        "strafe_left",
+        "strafe_right",
+        "crouch",
+        "crouch_walk",
+        "turn_left",
+        "turn_right"
+      ],
+      "unknown": [
+        "sprint_start",
+        "sprint_stop",
+        "backstep",
+        "guard_walk",
+        "land_hard",
+        "land_roll",
+        "ladder_up",
+        "ladder_down",
+        "swim_idle",
+        "swim_forward",
+        "swim_surface",
+        "knockdown_air",
+        "block_break",
+        "emote_cheer"
+      ],
+      "traversal": [
+        "jump_start",
+        "jump_loop",
+        "jump_land",
+        "roll",
+        "vault",
+        "climb_start",
+        "climb_loop",
+        "climb_stop"
+      ],
+      "combat": [
+        "attack",
+        "attack_combo_1",
+        "attack_combo_2",
+        "attack_combo_3",
+        "heavy_attack",
+        "aerial_attack",
+        "cast",
+        "cast_channel",
+        "cast_release",
+        "defend",
+        "block",
+        "parry",
+        "dodge"
+      ],
+      "reaction": [
+        "hit_react",
+        "stagger",
+        "knockdown",
+        "get_up",
+        "death"
+      ],
+      "interaction": [
+        "interact",
+        "pickup"
+      ]
+    }
+  },
+  "manifest_path": "assets/hero_pack/pack_manifest.json"
+}

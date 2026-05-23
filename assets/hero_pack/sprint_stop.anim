@@ -1,0 +1,167 @@
+{
+  "format": "AnimEngine",
+  "version": "1.0",
+  "model": {
+    "name": "generated_animation_model",
+    "tags": [],
+    "meshes": [],
+    "materials": {},
+    "skeleton": {
+      "name": "HeroRig",
+      "bones": [
+        {
+          "name": "root",
+          "index": 0,
+          "parent_index": -1,
+          "local_transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "inverse_bind": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "name": "spine_01",
+          "index": 1,
+          "parent_index": 0,
+          "local_transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "inverse_bind": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  },
+  "clips": [
+    {
+      "name": "sprint_stop",
+      "fps": 30.0,
+      "loop": true,
+      "motion_type": "",
+      "channels": [
+        {
+          "bone_name": "root",
+          "target": "TRANSLATION",
+          "keyframes": [
+            {
+              "time": 0.0,
+              "value": [
+                0,
+                0.052500000000000005,
+                0.189
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 0.225,
+              "value": [
+                0,
+                -0.042,
+                0.063
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 0.45,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "morph_tracks": [],
+  "metadata": {
+    "style_profile": "ff10_ps2",
+    "style_profile_label": "Final Fantasy X inspired (PS2-era cinematic pacing)",
+    "visual_target": "High-end PS2-era JRPG presentation with readable silhouettes, cinematic poses, and asset complexity suitable for PlayStation 2-class hardware.",
+    "gameplay_target": "Animation packs must support modern open-world JRPG gameplay beats similar to Final Fantasy VII Remake and Final Fantasy XV.",
+    "reference_titles": [
+      "Final Fantasy VII",
+      "Final Fantasy VIII",
+      "Final Fantasy IX",
+      "Final Fantasy X",
+      "Final Fantasy XII"
+    ],
+    "motion_type": "sprint_stop",
+    "duration": 0.45,
+    "sample_rate": 30.0,
+    "locomotion_category": "unknown",
+    "root_motion_policy": "none",
+    "interaction_tags": [],
+    "transition_intent": "oneshot"
+  }
+}
