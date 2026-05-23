@@ -1,0 +1,244 @@
+{
+  "format": "AnimEngine",
+  "version": "1.0",
+  "model": {
+    "name": "generated_animation_model",
+    "tags": [],
+    "meshes": [],
+    "materials": {},
+    "skeleton": {
+      "name": "HeroRig",
+      "bones": [
+        {
+          "name": "root",
+          "index": 0,
+          "parent_index": -1,
+          "local_transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "inverse_bind": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "name": "spine_01",
+          "index": 1,
+          "parent_index": 0,
+          "local_transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "inverse_bind": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  },
+  "clips": [
+    {
+      "name": "run",
+      "fps": 30.0,
+      "loop": true,
+      "motion_type": "",
+      "channels": [
+        {
+          "bone_name": "root",
+          "target": "TRANSLATION",
+          "keyframes": [
+            {
+              "time": 0.0,
+              "value": [
+                0.0,
+                0.10500000000000001,
+                0.0
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 0.3472222222222222,
+              "value": [
+                0.0,
+                -0.052500000000000005,
+                0.0
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 0.6944444444444444,
+              "value": [
+                0.0,
+                0.10500000000000001,
+                0.0
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 1.0416666666666665,
+              "value": [
+                0.0,
+                -0.052500000000000005,
+                0.0
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 1.3888888888888888,
+              "value": [
+                0.0,
+                0.10500000000000001,
+                0.0
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 1.5,
+              "value": [
+                0.0,
+                0.10500000000000001,
+                0.0
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            }
+          ]
+        },
+        {
+          "bone_name": "spine_01",
+          "target": "ROTATION",
+          "keyframes": [
+            {
+              "time": 0.0,
+              "value": [
+                0.0,
+                0.0,
+                -0.1575,
+                0.9875189871592343
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 0.75,
+              "value": [
+                0.0,
+                0.0,
+                0.1575,
+                0.9875189871592343
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 1.5,
+              "value": [
+                0.0,
+                0.0,
+                -0.1575,
+                0.9875189871592343
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "morph_tracks": [],
+  "metadata": {
+    "style_profile": "ff10_ps2",
+    "style_profile_label": "Final Fantasy X inspired (PS2-era cinematic pacing)",
+    "visual_target": "High-end PS2-era JRPG presentation with readable silhouettes, cinematic poses, and asset complexity suitable for PlayStation 2-class hardware.",
+    "gameplay_target": "Animation packs must support modern open-world JRPG gameplay beats similar to Final Fantasy VII Remake and Final Fantasy XV.",
+    "reference_titles": [
+      "Final Fantasy VII",
+      "Final Fantasy VIII",
+      "Final Fantasy IX",
+      "Final Fantasy X",
+      "Final Fantasy XII"
+    ],
+    "motion_type": "run",
+    "duration": 1.5,
+    "sample_rate": 30.0,
+    "locomotion_category": "exploration",
+    "root_motion_policy": "xy_only",
+    "interaction_tags": [
+      "footstep_even"
+    ],
+    "transition_intent": "locomotion_loop"
+  }
+}
