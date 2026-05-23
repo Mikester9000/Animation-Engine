@@ -109,6 +109,8 @@ class AnimationEditor:
         self.compare_var = tk.BooleanVar(value=False)
         self.viewer_grid_var = tk.BooleanVar(value=True)
         self.viewer_lighting_var = tk.StringVar(value="ps2_studio")
+        self.ik_mode_var = tk.BooleanVar(value=False)
+        self._ik_target_bone: Optional[str] = None
 
         # Build UI
         self._build_menu()
@@ -375,6 +377,18 @@ class AnimationEditor:
             activeforeground=TEXT_COLOR,
         ).pack(side=tk.RIGHT, padx=6)
 
+        tk.Checkbutton(
+            header,
+            text="IK",
+            variable=self.ik_mode_var,
+            command=self._redraw_viewport,
+            bg="#1a1a1a",
+            fg=TEXT_COLOR,
+            selectcolor="#1a1a1a",
+            activebackground="#1a1a1a",
+            activeforeground=TEXT_COLOR,
+        ).pack(side=tk.RIGHT, padx=6)
+
         self.viewport_canvas = tk.Canvas(parent, bg="#14181f", highlightthickness=0, cursor="fleur")
         self.viewport_canvas.pack(fill=tk.BOTH, expand=True, padx=6, pady=(2, 6))
         self.viewport_canvas.bind("<Configure>", lambda _: self._redraw_viewport())
@@ -383,6 +397,7 @@ class AnimationEditor:
         self.viewport_canvas.bind("<Shift-B1-Motion>", self._on_viewport_pan_drag)
         self.viewport_canvas.bind("<ButtonRelease-1>", self._on_viewport_drag_end)
         self.viewport_canvas.bind("<MouseWheel>", self._on_viewport_zoom)
+        self.viewport_canvas.bind("<Control-B1-Motion>", self._on_viewport_ik_drag)
 
         self._camera_yaw = 0.9
         self._camera_pitch = -0.25
@@ -529,7 +544,241 @@ class AnimationEditor:
         )
         self._event_listbox.pack(fill=tk.X, padx=4, pady=2)
 
-    def _build_timeline(self, parent: tk.Frame) -> None:
+        # F-curve editor (Task 24)
+        self._build_curve_editor(parent)
+
+        # State graph panel (Task 30)
+        self._build_state_graph_panel(parent)
+
+    # -----------------------------------------------------------------------
+    # F-curve editor panel (Task 24)
+    # -----------------------------------------------------------------------
+
+    def _build_curve_editor(self, parent: tk.Frame) -> None:
+        """Add a compact F-curve canvas to the right panel."""
+        sep = tk.Frame(parent, bg=GRID_COLOR, height=1)
+        sep.pack(fill=tk.X, padx=4, pady=4)
+        tk.Label(
+            parent, text="F-Curve", bg=BG_COLOR, fg=ACCENT_COLOR, font=("Helvetica", 9, "bold")
+        ).pack(fill=tk.X, padx=4)
+        self.curve_canvas = tk.Canvas(parent, bg="#1a1f2a", height=80, highlightthickness=0)
+        self.curve_canvas.pack(fill=tk.X, padx=4, pady=(2, 4))
+        self.curve_canvas.bind("<Configure>", lambda _: self._redraw_curve_editor())
+
+    def _redraw_curve_editor(self) -> None:
+        """Repaint the F-curve canvas for the active channel of the selected bone."""
+        if not hasattr(self, "curve_canvas"):
+            return
+        c = self.curve_canvas
+        c.delete("all")
+        w = max(1, c.winfo_width())
+        h = max(1, c.winfo_height())
+        c.create_rectangle(0, 0, w, h, fill="#1a1f2a", outline="")
+        if not self.active_clip:
+            c.create_text(w // 2, h // 2, text="no clip", fill="#7f8da0", font=("Helvetica", 8))
+            return
+        # Determine which channel to display (TRANSLATION then ROTATION fallback).
+        bone_name = self._prop_vars.get("prop_bone", tk.StringVar()).get() if hasattr(self, "_prop_vars") else ""
+        ch = None
+        for target in (ChannelTarget.TRANSLATION, ChannelTarget.ROTATION, ChannelTarget.SCALE):
+            ch = self.active_clip.get_channel(bone_name, target) if bone_name else None
+            if ch:
+                break
+        if ch is None:
+            # Fall back to first available channel in clip.
+            for ch_key, ch_val in self.active_clip._channels.items():
+                ch = ch_val
+                break
+        if ch is None or not ch.keyframes:
+            c.create_text(w // 2, h // 2, text="no channel", fill="#7f8da0", font=("Helvetica", 8))
+            return
+        kf_times = [kf.time for kf in ch.keyframes]
+        # Use first component (index 0) of each keyframe value.
+        kf_vals = [kf.value[0] if isinstance(kf.value, (list, tuple)) else float(kf.value) for kf in ch.keyframes]
+        t_min, t_max = min(kf_times), max(kf_times)
+        v_min, v_max = min(kf_vals), max(kf_vals)
+        t_range = t_max - t_min if t_max > t_min else 1.0
+        v_range = v_max - v_min if abs(v_max - v_min) > 1e-6 else 1.0
+        pad = 6
+
+        def _tx(t: float) -> float:
+            return pad + (t - t_min) / t_range * (w - 2 * pad)
+
+        def _ty(v: float) -> float:
+            return h - pad - (v - v_min) / v_range * (h - 2 * pad)
+
+        # Draw horizontal zero line.
+        y0 = _ty(0.0)
+        if pad <= y0 <= h - pad:
+            c.create_line(pad, y0, w - pad, y0, fill="#2d3a50", width=1)
+        # Draw curve polyline.
+        if len(kf_times) >= 2:
+            n_steps = max(w, 60)
+            pts: list[float] = []
+            for i in range(n_steps + 1):
+                t = t_min + i / n_steps * t_range
+                v = ch.evaluate(t)
+                val = v[0] if isinstance(v, (list, tuple)) else float(v)
+                pts.extend([_tx(t), _ty(val)])
+            c.create_line(*pts, fill="#e8a020", width=2, smooth=True)
+        # Draw keyframe diamonds.
+        for t, v in zip(kf_times, kf_vals):
+            x, y = _tx(t), _ty(v)
+            c.create_polygon(x, y - 4, x + 4, y, x, y + 4, x - 4, y, fill=KF_COLOR, outline="")
+        # Label
+        c.create_text(4, 4, text=f"{ch.bone_name}/{ch.target.name}[0]", anchor="nw", fill="#93a6c2", font=("Helvetica", 7))
+
+    # -----------------------------------------------------------------------
+    # State graph panel (Task 30)
+    # -----------------------------------------------------------------------
+
+    def _build_state_graph_panel(self, parent: tk.Frame) -> None:
+        """Add a compact blend-tree state graph canvas to the right panel."""
+        sep = tk.Frame(parent, bg=GRID_COLOR, height=1)
+        sep.pack(fill=tk.X, padx=4, pady=4)
+        hdr = tk.Frame(parent, bg=BG_COLOR)
+        hdr.pack(fill=tk.X, padx=4)
+        tk.Label(
+            hdr, text="State Graph", bg=BG_COLOR, fg=ACCENT_COLOR, font=("Helvetica", 9, "bold")
+        ).pack(side=tk.LEFT)
+        tk.Button(
+            hdr, text="↺", bg="#333", fg=TEXT_COLOR, relief=tk.FLAT, padx=4,
+            command=self._redraw_state_graph,
+        ).pack(side=tk.RIGHT)
+        self.state_graph_canvas = tk.Canvas(parent, bg="#161d27", height=100, highlightthickness=0)
+        self.state_graph_canvas.pack(fill=tk.X, padx=4, pady=(2, 4))
+        self.state_graph_canvas.bind("<Configure>", lambda _: self._redraw_state_graph())
+
+    def _redraw_state_graph(self) -> None:
+        """Repaint the blend-tree state graph canvas."""
+        if not hasattr(self, "state_graph_canvas"):
+            return
+        c = self.state_graph_canvas
+        c.delete("all")
+        w = max(1, c.winfo_width())
+        h = max(1, c.winfo_height())
+        c.create_rectangle(0, 0, w, h, fill="#161d27", outline="")
+        # Collect states from model blend tree if present.
+        bt = getattr(self.model, "blend_tree", None) if self.model else None
+        states: list[str] = []
+        if bt is not None and hasattr(bt, "_states"):
+            states = list(bt._states.keys())
+        elif self.active_clip:
+            states = [cl.name for cl in self.clips]
+        if not states:
+            c.create_text(w // 2, h // 2, text="no states", fill="#7f8da0", font=("Helvetica", 8))
+            return
+        # Layout states in a single row (or wrap) and draw labelled boxes.
+        n = len(states)
+        box_w = max(50, min(90, (w - 12) // max(1, n) - 8))
+        box_h = 24
+        col_step = box_w + 10
+        row_h = box_h + 18
+        cols = max(1, (w - 12) // col_step)
+        positions: Dict[str, tuple[int, int]] = {}
+        for idx, name in enumerate(states):
+            col = idx % cols
+            row = idx // cols
+            x = 6 + col * col_step + box_w // 2
+            y = 14 + row * row_h + box_h // 2
+            positions[name] = (x, y)
+            active = (self.active_clip and name == self.active_clip.name)
+            fill = ACCENT_COLOR if active else "#2d3a50"
+            c.create_rectangle(x - box_w // 2, y - box_h // 2, x + box_w // 2, y + box_h // 2,
+                                fill=fill, outline="#93a6c2", width=1)
+            c.create_text(x, y, text=name[:10], fill="#111" if active else TEXT_COLOR, font=("Helvetica", 7))
+        # Draw transition arrows if blend tree available.
+        if bt is not None and hasattr(bt, "_transitions"):
+            for tr in bt._transitions:
+                src = positions.get(getattr(tr, "from_state", None))
+                dst = positions.get(getattr(tr, "to_state", None))
+                if src and dst and src != dst:
+                    c.create_line(src[0], src[1], dst[0], dst[1],
+                                  fill="#93a6c2", arrow=tk.LAST, width=1)
+
+    # -----------------------------------------------------------------------
+    # IK posing mode (Task 25)
+    # -----------------------------------------------------------------------
+
+    def _on_viewport_ik_drag(self, event) -> None:
+        """Handle Ctrl+drag in the viewport to apply IK when IK mode is enabled."""
+        if not self.ik_mode_var.get():
+            return
+        if not self.model or not self.model.skeleton or not self.active_clip:
+            return
+        skel = self.model.skeleton
+        if not skel.bones:
+            return
+        # Pick the last bone as IK end-effector by default; user can extend.
+        if self._ik_target_bone is None:
+            self._ik_target_bone = skel.bones[-1].name
+        # Map 2-D screen drag delta to a rough 3-D world displacement.
+        w = max(1, self.viewport_canvas.winfo_width())
+        h = max(1, self.viewport_canvas.winfo_height())
+        # Unproject screen point to an approximate XY world delta.
+        fov = 1.1
+        half_h = math.tan(fov * 0.5) * self._camera_distance
+        half_w = half_h * (w / max(1, h))
+        dx_world = (event.x / w - 0.5) * 2.0 * half_w
+        dy_world = -(event.y / h - 0.5) * 2.0 * half_h
+        target_world = Vector3(
+            self._camera_pan.x + dx_world,
+            self._camera_pan.y + dy_world,
+            self._camera_pan.z,
+        )
+        self._apply_ik_pose(self._ik_target_bone, target_world)
+
+    def _apply_ik_pose(self, end_bone_name: str, target_pos: Vector3) -> None:
+        """Run one FABRIK pass and write resulting rotations into the active clip."""
+        try:
+            from ..animation.ik_solver import IKChain, IKSolver
+        except Exception:
+            return
+        if not self.model or not self.model.skeleton or not self.active_clip:
+            return
+        skel = self.model.skeleton
+        # Build the IK chain from root to end bone.
+        chain_bones: list = []
+        bone_map = {b.name: b for b in skel.bones}
+        b = bone_map.get(end_bone_name)
+        while b is not None:
+            chain_bones.insert(0, b)
+            if b.parent_index < 0:
+                break
+            b = skel.bones[b.parent_index]
+        if len(chain_bones) < 2:
+            return
+        world_mats = self._evaluate_pose_world_matrices(self.active_clip, self.playback.time_seconds)
+        # Build pose_transforms dict (world-space) for solver.
+        pose_transforms: dict = {}
+        for bone in chain_bones:
+            pos = world_mats[bone.index].transform_point(Vector3.zero())
+            from ..math_utils import Transform as _Transform
+            pose_transforms[bone.name] = _Transform(pos)
+        bone_lengths = []
+        for i in range(len(chain_bones) - 1):
+            p0 = pose_transforms[chain_bones[i].name].position
+            p1 = pose_transforms[chain_bones[i + 1].name].position
+            bone_lengths.append(max(1e-4, (p1 - p0).length()))
+        chain = IKChain(
+            bone_names=[b.name for b in chain_bones],
+            target=target_pos,
+            max_iterations=10,
+            tolerance=1e-3,
+        )
+        IKSolver().solve(chain, pose_transforms, bone_lengths)
+        # Write resulting rotations back as keyframes in the active clip.
+        t = self.playback.time_seconds
+        for bone in chain_bones:
+            tr = pose_transforms.get(bone.name)
+            if tr is not None:
+                q = tr.rotation
+                self.active_clip.add_keyframe(
+                    bone.name, ChannelTarget.ROTATION, t, [q.x, q.y, q.z, q.w]
+                )
+        self._redraw_viewport()
+
+
         """Build the scrollable timeline strip."""
         tk.Label(
             parent, text="Timeline", bg="#1e1e1e", fg=ACCENT_COLOR, font=("Helvetica", 9, "bold")
@@ -1512,6 +1761,7 @@ class AnimationEditor:
         self._draw_skeleton_world(
             c, w, h, self.model.skeleton, primary_world, preset["skeleton"], preset["joint"]
         )
+        self._draw_mesh_wireframe(c, w, h, primary_world)
         if self.compare_var.get():
             baseline = self._baseline_clip_snapshots.get(
                 self.active_clip.name if self.active_clip else ""
@@ -1540,6 +1790,45 @@ class AnimationEditor:
             fill="#93a6c2",
             font=("Helvetica", 8),
         )
+
+    def _draw_mesh_wireframe(
+        self,
+        canvas: tk.Canvas,
+        width: int,
+        height: int,
+        world_mats: list,
+    ) -> None:
+        """Draw a PS2-style wireframe overlay for all model meshes (Task 23)."""
+        if not self.model or not self.model.meshes:
+            return
+        for mesh in self.model.meshes:
+            if not mesh.vertices or not mesh.indices:
+                continue
+            # Build per-vertex skinned world position.
+            verts = mesh.vertices
+            n_verts = len(verts)
+            cached_pts: Dict[int, Optional[tuple[float, float]]] = {}
+            for vi, v in enumerate(verts):
+                # Simple 1-bone lookup for performance; use first bone_index.
+                bi = v.bone_indices[0] if v.bone_indices else 0
+                mat = world_mats[bi] if 0 <= bi < len(world_mats) else None
+                pos = mat.transform_point(v.position) if mat else v.position
+                cached_pts[vi] = self._project_world_point(pos, width, height)
+            # Draw triangle edges (de-duplicate shared edges for speed).
+            drawn_edges: set = set()
+            for i in range(0, len(mesh.indices) - 2, 3):
+                i0, i1, i2 = mesh.indices[i], mesh.indices[i + 1], mesh.indices[i + 2]
+                for a, b in ((i0, i1), (i1, i2), (i2, i0)):
+                    edge = (min(a, b), max(a, b))
+                    if edge in drawn_edges:
+                        continue
+                    drawn_edges.add(edge)
+                    pa, pb = cached_pts.get(a), cached_pts.get(b)
+                    if pa and pb:
+                        canvas.create_line(
+                            pa[0], pa[1], pb[0], pb[1],
+                            fill="#2a4a6a", width=1,
+                        )
 
     def _draw_view_grid(self, canvas: tk.Canvas, width: int, height: int, color: str) -> None:
         for x in range(0, width, 40):
