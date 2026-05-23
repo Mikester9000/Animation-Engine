@@ -538,3 +538,51 @@ class TestAnimationClipEventTiming:
         tree.set_parameter("moving", True)
         tree.update(0.016)
         assert tree.is_transitioning or tree.current_state_name == "run"
+
+
+# ---------------------------------------------------------------------------
+# CPU Skinning (Task 32)
+# ---------------------------------------------------------------------------
+
+class TestCpuSkinMesh:
+    """Verify cpu_skin_mesh applies skin matrices to vertex positions."""
+
+    def _make_single_vertex_mesh(self):
+        from animation_engine.model.mesh import Mesh, Vertex
+        from animation_engine.math_utils import Vector3, Vector2, Vector4
+        mesh = Mesh("test")
+        v = Vertex(
+            position=Vector3(0.0, 1.0, 0.0),
+            normal=Vector3(0.0, 1.0, 0.0),
+            tangent=Vector4(1.0, 0.0, 0.0, 1.0),
+            uv0=Vector2(0.0, 0.0),
+            bone_indices=[0, 0, 0, 0],
+            bone_weights=[1.0, 0.0, 0.0, 0.0],
+        )
+        mesh.vertices.append(v)
+        mesh.indices.extend([0, 0, 0])
+        return mesh
+
+    def test_identity_skin_matrix_preserves_positions(self):
+        from animation_engine.runtime.skinning import cpu_skin_mesh
+        from animation_engine.math_utils import Matrix4x4
+        mesh = self._make_single_vertex_mesh()
+        skinned = cpu_skin_mesh(mesh, [Matrix4x4.identity()])
+        assert len(skinned.vertices) == 1
+        v = skinned.vertices[0]
+        assert abs(v.position.x - 0.0) < 1e-5
+        assert abs(v.position.y - 1.0) < 1e-5
+        assert abs(v.position.z - 0.0) < 1e-5
+
+    def test_translation_skin_matrix_moves_vertex(self):
+        from animation_engine.runtime.skinning import cpu_skin_mesh
+        from animation_engine.math_utils import Matrix4x4, Vector3
+        mesh = self._make_single_vertex_mesh()
+        # Skin matrix that adds (5, 0, 0) translation.
+        tx = Matrix4x4.from_translation(Vector3(5.0, 0.0, 0.0))
+        skinned = cpu_skin_mesh(mesh, [tx])
+        v = skinned.vertices[0]
+        # Vertex was at (0,1,0); after translation skin should be near (5,1,0).
+        assert abs(v.position.x - 5.0) < 1e-4
+        assert abs(v.position.y - 1.0) < 1e-4
+        assert len(skinned.vertices) == len(mesh.vertices)

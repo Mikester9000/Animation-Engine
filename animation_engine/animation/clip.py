@@ -218,3 +218,85 @@ class AnimationClip:
             f"duration={self.duration:.2f}s, "
             f"channels={len(self._channels)})"
         )
+
+
+# ---------------------------------------------------------------------------
+# Retargeting utility
+# ---------------------------------------------------------------------------
+
+def retarget_clip(
+    clip: "AnimationClip",
+    source_skel: object,
+    target_skel: object,
+    bone_map: Dict[str, str],
+) -> "AnimationClip":
+    """Return a new AnimationClip retargeted from *source_skel* to *target_skel*.
+
+    Bone names are remapped using *bone_map* (``{source_name: target_name}``).
+    Translation channels are scaled by the ratio of target-to-source bone
+    chain lengths so proportions match the target skeleton.  Rotation channels
+    are copied unchanged, preserving pose intent across skeleton variants.
+
+    Parameters
+    ----------
+    clip:
+        Source animation clip (authored for *source_skel*).
+    source_skel:
+        Source skeleton (``animation_engine.model.skeleton.Skeleton``).
+    target_skel:
+        Destination skeleton.  Must contain all bones referenced by the
+        *bone_map* target values.
+    bone_map:
+        Dict mapping source bone names to target bone names.  Bones not
+        present in *bone_map* are dropped from the output clip.
+
+    Returns
+    -------
+    A new :class:`AnimationClip` with remapped channels.
+    """
+    from copy import deepcopy
+    from .channel import AnimationChannel, ChannelTarget
+    from .keyframe import Keyframe
+
+    def _bone_length(skel, name: str) -> float:
+        """Return the bind-pose distance from a bone to its parent (its 'length')."""
+        bone = skel.get_bone(name) if hasattr(skel, "get_bone") else None
+        if bone is None:
+            # Fall back: look up by iterating bones list.
+            for b in getattr(skel, "bones", []):
+                if b.name == name:
+                    bone = b
+                    break
+        if bone is None:
+            return 1.0
+        pos = bone.local_transform.position
+        return max(1e-6, (pos.x ** 2 + pos.y ** 2 + pos.z ** 2) ** 0.5)
+
+    new_clip = AnimationClip(
+        name=f"{clip.name}_retargeted",
+        fps=clip.fps,
+        loop=clip.loop,
+    )
+
+    for (bone_name, target), ch in clip._channels.items():
+        mapped_name = bone_map.get(bone_name)
+        if mapped_name is None:
+            continue
+
+        new_ch = AnimationChannel(mapped_name, target)
+        if target == ChannelTarget.TRANSLATION:
+            src_len = _bone_length(source_skel, bone_name)
+            tgt_len = _bone_length(target_skel, mapped_name)
+            scale = tgt_len / src_len
+            for kf in ch.keyframes:
+                scaled_value = [v * scale for v in kf.value]
+                new_ch.add_keyframe(Keyframe(kf.time, scaled_value, kf.interp))
+        else:
+            for kf in ch.keyframes:
+                new_ch.add_keyframe(Keyframe(kf.time, list(kf.value), kf.interp))
+        new_clip._channels[(mapped_name, target)] = new_ch
+
+    for ev in clip._events:
+        new_clip.add_event(ev["name"], ev["time"], dict(ev.get("data") or {}))
+
+    return new_clip

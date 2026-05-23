@@ -441,3 +441,149 @@ class TestAnimEventSerializationCompat:
         _, _, _, meta2 = AnimImporter().import_string(s, include_metadata=True)
         for key, expected_val in metadata.items():
             assert meta2[key] == expected_val, f"Metadata field '{key}' mismatch"
+
+
+# ---------------------------------------------------------------------------
+# Pack format migration (Task 33)
+# ---------------------------------------------------------------------------
+
+class TestAnimDictMigration:
+    """Verify migrate_anim_dict upgrades v1 clip payloads to v2 schema."""
+
+    def test_v1_payload_gains_events_key(self):
+        from animation_engine.io.anim_format import migrate_anim_dict, FORMAT_NAME, FORMAT_VERSION
+        payload = {
+            "format": FORMAT_NAME,
+            "version": FORMAT_VERSION,
+            "clips": [{"name": "walk", "fps": 30.0, "loop": True, "channels": []}],
+            "model": {},
+            "morph_tracks": [],
+        }
+        # Pre-condition: no events key in clip dict.
+        assert "events" not in payload["clips"][0]
+        migrate_anim_dict(payload)
+        assert "events" in payload["clips"][0]
+        assert payload["clips"][0]["events"] == []
+
+    def test_v1_payload_gains_gameplay_tags_key(self):
+        from animation_engine.io.anim_format import migrate_anim_dict, FORMAT_NAME, FORMAT_VERSION
+        payload = {
+            "format": FORMAT_NAME,
+            "version": FORMAT_VERSION,
+            "clips": [{"name": "idle", "fps": 30.0, "loop": True, "channels": []}],
+            "model": {},
+            "morph_tracks": [],
+        }
+        migrate_anim_dict(payload)
+        assert payload["clips"][0]["gameplay_tags"] == {}
+
+    def test_migration_is_idempotent(self):
+        from animation_engine.io.anim_format import migrate_anim_dict, FORMAT_NAME, FORMAT_VERSION
+        payload = {
+            "format": FORMAT_NAME,
+            "version": FORMAT_VERSION,
+            "clips": [{"name": "run", "fps": 30.0, "loop": True, "channels": [],
+                        "events": [{"name": "footstep", "time": 0.5, "data": {}}]}],
+            "model": {},
+            "morph_tracks": [],
+        }
+        migrate_anim_dict(payload)
+        migrate_anim_dict(payload)  # second call must not change events.
+        assert len(payload["clips"][0]["events"]) == 1
+
+    def test_existing_keys_survive_migration(self):
+        from animation_engine.io.anim_format import migrate_anim_dict, FORMAT_NAME, FORMAT_VERSION
+        payload = {
+            "format": FORMAT_NAME,
+            "version": FORMAT_VERSION,
+            "clips": [{"name": "cast", "fps": 60.0, "loop": False, "channels": [],
+                        "style_profile": "ff10_ps2"}],
+            "model": {},
+            "morph_tracks": [],
+            "metadata": {"visual_target": "PS2_visual"},
+        }
+        migrate_anim_dict(payload)
+        assert payload["clips"][0]["style_profile"] == "ff10_ps2"
+        assert payload["metadata"]["visual_target"] == "PS2_visual"
+
+
+# ---------------------------------------------------------------------------
+# Animation retargeting (Task 33)
+# ---------------------------------------------------------------------------
+
+class TestRetargetClip:
+    """Verify retarget_clip remaps bone names and scales translations."""
+
+    def _make_minimal_skeleton(self, bone_length: float):
+        """Return a one-bone skeleton whose root bind-pose translation equals bone_length."""
+        from animation_engine.model.skeleton import Skeleton
+        from animation_engine.math_utils import Transform, Vector3
+        skel = Skeleton("skel")
+        skel.add_bone("root", parent_index=-1,
+                      local_transform=Transform(position=Vector3(0.0, bone_length, 0.0)))
+        return skel
+
+    def test_translation_channel_scaled_by_bone_ratio(self):
+        from animation_engine.animation.clip import AnimationClip, retarget_clip
+        from animation_engine.animation.channel import ChannelTarget
+        clip = AnimationClip("walk")
+        clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [1.0, 0.0, 0.0])
+        clip.add_keyframe("root", ChannelTarget.TRANSLATION, 1.0, [1.0, 0.0, 0.0])
+
+        src_skel = self._make_minimal_skeleton(bone_length=1.0)
+        tgt_skel = self._make_minimal_skeleton(bone_length=2.0)
+        bone_map = {"root": "root"}
+
+        retargeted = retarget_clip(clip, src_skel, tgt_skel, bone_map)
+        ch = retargeted.get_channel("root", ChannelTarget.TRANSLATION)
+        assert ch is not None
+        # Scale = 2.0 / 1.0 = 2.0; x value should be 2.0.
+        val = ch.keyframes[0].value
+        assert abs(val[0] - 2.0) < 1e-5
+
+    def test_rotation_channel_unchanged(self):
+        from animation_engine.animation.clip import AnimationClip, retarget_clip
+        from animation_engine.animation.channel import ChannelTarget
+        clip = AnimationClip("cast")
+        clip.add_keyframe("root", ChannelTarget.ROTATION, 0.0, [0.0, 0.5, 0.0, 0.866])
+
+        src_skel = self._make_minimal_skeleton(bone_length=1.0)
+        tgt_skel = self._make_minimal_skeleton(bone_length=3.0)
+        bone_map = {"root": "root"}
+
+        retargeted = retarget_clip(clip, src_skel, tgt_skel, bone_map)
+        ch = retargeted.get_channel("root", ChannelTarget.ROTATION)
+        assert ch is not None
+        val = ch.keyframes[0].value
+        assert abs(val[1] - 0.5) < 1e-5  # y unchanged
+
+    def test_unmapped_bone_is_dropped(self):
+        from animation_engine.animation.clip import AnimationClip, retarget_clip
+        from animation_engine.animation.channel import ChannelTarget
+        clip = AnimationClip("idle")
+        clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0.0, 0.0, 0.0])
+        clip.add_keyframe("spine", ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+
+        src_skel = self._make_minimal_skeleton(bone_length=1.0)
+        tgt_skel = self._make_minimal_skeleton(bone_length=1.0)
+        bone_map = {"root": "root"}  # spine is not mapped.
+
+        retargeted = retarget_clip(clip, src_skel, tgt_skel, bone_map)
+        assert retargeted.get_channel("spine", ChannelTarget.ROTATION) is None
+        assert retargeted.get_channel("root", ChannelTarget.TRANSLATION) is not None
+
+    def test_events_are_copied_to_retargeted_clip(self):
+        from animation_engine.animation.clip import AnimationClip, retarget_clip
+        from animation_engine.animation.channel import ChannelTarget
+        clip = AnimationClip("run")
+        clip.add_event("footstep_left", 0.4, {"foot": "left"})
+        clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0.0, 0.0, 0.0])
+
+        src_skel = self._make_minimal_skeleton(bone_length=1.0)
+        tgt_skel = self._make_minimal_skeleton(bone_length=1.0)
+        bone_map = {"root": "root"}
+
+        retargeted = retarget_clip(clip, src_skel, tgt_skel, bone_map)
+        events = retargeted.get_events("footstep_left")
+        assert len(events) == 1
+        assert events[0]["time"] == 0.4

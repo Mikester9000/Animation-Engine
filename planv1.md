@@ -313,6 +313,160 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 
 ---
 
+## Phase I — Motion Quality, Editor Depth, and Production Tooling (Tasks 23–34)
+
+### Task 23
+- **Task Name:** Render skinned mesh wireframe in PS2 viewport
+- **Narrative Logic:** The PS2-era preview viewport currently draws skeleton sticks only. Drawing projected triangle edges from a skinned mesh gives artists a true wireframe character preview without GPU dependencies.
+- **Code Structure Need:** Call `cpu_skin_mesh(mesh, skin_matrices)` in `_redraw_viewport`; project each vertex with `_project_world_point`; draw triangle edges using `canvas.create_line`.
+- **READ_FILE:** `animation_engine/editor/main.py`
+- **READ_LINES:** `1488-1560, 1600-1640`
+- **READ_FILE:** `animation_engine/runtime/skinning.py`
+- **READ_LINES:** `36-65`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `1488-1560` (_redraw_viewport body); add helper `_draw_mesh_wireframe` after `_draw_skeleton_world` near line `1608`
+- **Acceptance Criteria:** When a model with mesh is loaded, viewport draws wireframe triangle edges that move with the current pose.
+
+### Task 24
+- **Task Name:** Add F-curve editor panel for keyframe tangent visualisation
+- **Narrative Logic:** Fine-tuning FF-style timing (anticipation hold, sharp impact, follow-through) requires seeing the value curve for each channel. A visual F-curve panel reduces manual trial-and-error.
+- **Code Structure Need:** Add a `tk.Canvas`-based curve panel below the timeline. Read keyframe values from the selected `AnimationChannel`, plot Bezier segments, draw draggable tangent handles. Write edited tangent data back via `add_keyframe` with `KeyframeType.CUBIC`.
+- **READ_FILE:** `animation_engine/editor/main.py`
+- **READ_LINES:** `532-580, 685-760`
+- **READ_FILE:** `animation_engine/animation/channel.py`
+- **READ_LINES:** `1-60`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** Add `_build_curve_editor` after `_build_timeline` ~line `577`; add `_redraw_curve_editor` and tangent drag handlers after `_redraw_timeline` ~line `685`
+- **Acceptance Criteria:** Selecting a channel on the timeline shows its value curve; dragging a tangent handle updates the channel keyframe and redraws the preview.
+
+### Task 25
+- **Task Name:** Expose IK posing mode in editor viewport
+- **Narrative Logic:** IK goal-dragging lets animators block foot-plant and hand-contact poses far faster than manual FK entry. These contact poses are essential for FF PS2-era expressive body language.
+- **Code Structure Need:** Add IK mode toggle button in toolbar. When active, click on a projected joint to select it as end-effector; drag calls `IKSolver(chain).solve(goal_pos)` and writes the result as a keyframe at `playback.time_seconds`.
+- **READ_FILE:** `animation_engine/editor/main.py`
+- **READ_LINES:** `243-299, 1452-1495`
+- **READ_FILE:** `animation_engine/animation/ik_solver.py`
+- **READ_LINES:** `30-95`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** Add IK toggle ~line `243` in `_build_toolbar`; add `_on_viewport_ik_drag` ~line `1480`; add `_apply_ik_pose` ~line `1490`
+- **Acceptance Criteria:** Enabling IK mode and dragging a joint in the viewport updates that joint's rotation keyframe; disabling IK mode restores normal orbit behaviour.
+
+### Task 26
+- **Task Name:** Improve procedural walk and run cycle motion quality
+- **Narrative Logic:** The current walk/run uses a single root-bob with two keyframes. A proper stride cycle with hip sway, pelvis rotation, counter-shoulder swing, and foot contact pairs produces character-appropriate FF-style locomotion.
+- **Code Structure Need:** Replace the `walk` branch with an eight-keyframe root translation + pelvis lateral + shoulder counter-rotation loop. Replace `run` with a tighter four-count version with stronger amplitude. Use the skeleton bone name list to target the correct bones.
+- **READ_FILE:** `animation_engine/backend.py`
+- **READ_LINES:** `195-265`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `200-225` (walk branch), `265-310` (run branch)
+- **Acceptance Criteria:** Generated walk clip has keyframes on at least three bone channels (root, pelvis/hip, left_shoulder) with values that produce a visible stride cycle when played back.
+
+### Task 27
+- **Task Name:** Improve procedural combat clip motion quality
+- **Narrative Logic:** Current attack/cast/dodge branches produce one or two rotation keyframes with no anticipation or follow-through. FF-style combat requires five-phase staged motion: rest → anticipate → strike → impact → recover.
+- **Code Structure Need:** For each combat branch, add keyframes at: `0` (rest), `duration*0.2` (anticipate), `duration*0.45` (strike), `duration*0.55` (impact), `duration*1.0` (recover). Use spine and arm bone channels. Amplitude values should be larger than locomotion.
+- **READ_FILE:** `animation_engine/backend.py`
+- **READ_LINES:** `430-670`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** attack `430-480`, heavy_attack `495-540`, cast `550-600`, dodge `615-660`
+- **Acceptance Criteria:** Generated attack clip has at least five keyframes on spine and arm channels; keyframe values at the impact frame differ noticeably from rest and anticipation values.
+
+### Task 28
+- **Task Name:** Add pack format version migration utility
+- **Narrative Logic:** Old `.anim` files (v1) lack `events`, `gameplay_tags`, and `version` keys. A migration utility lets `AnimImporter` load legacy assets cleanly without requiring re-export.
+- **Code Structure Need:** Add `migrate_anim_dict(d: dict) -> dict` that: (1) checks for missing `"version"` key (v1 detection); (2) inserts `"version": 2`, `"events": []`, `"gameplay_tags": {}` if absent; (3) returns the dict unmodified if already v2. Call it at the top of `AnimImporter.load`.
+- **READ_FILE:** `animation_engine/io/anim_format.py`
+- **READ_LINES:** `85-120, 160-190`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** Add `migrate_anim_dict` ~line `95`; call it in `AnimImporter.load` ~line `165`
+- **Acceptance Criteria:** Loading a v1 dict (no `events` key) via `AnimImporter` succeeds and returns a clip; loading the same dict twice is idempotent.
+
+### Task 29
+- **Task Name:** Add batch-export-headers CLI subcommand
+- **Narrative Logic:** The GameRewritten release build needs all clip packs pre-converted to C++ headers. A single CLI command driven by the pack manifest avoids manual per-clip invocation.
+- **Code Structure Need:** Add `_cmd_batch_export_headers(args)` that: reads manifest JSON from `--manifest`; iterates `ordered_files`; calls `AnimToHeaderConverter` on each `.anim` file; writes `<clip_name>.hpp` into `--output-dir`. Register as `batch-export-headers` subcommand in `build_parser`.
+- **READ_FILE:** `animation_engine/cli.py`
+- **READ_LINES:** `333-386, 540-566`
+- **READ_FILE:** `compat/anim_to_cpp_header.py`
+- **READ_LINES:** `12-30, 360-409`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** Add `_cmd_batch_export_headers` ~line `374`; add parser registration ~line `545`
+- **Acceptance Criteria:** `animation-engine batch-export-headers --manifest pack.json --output-dir out/` creates one `.hpp` file per clip in `ordered_files` and exits with code 0 on success.
+
+### Task 30
+- **Task Name:** Add blend tree state graph panel in editor
+- **Narrative Logic:** Artists cannot see the current state machine structure from the clip list alone. A read-only node-graph panel shows BlendTree states and transitions visually, reducing confusion during animation state authoring.
+- **Code Structure Need:** Add a `State Graph` tab inside the centre panel. Draw each `BlendTreeState` as a rounded rectangle labelled with state name. Draw directed arrows between states for each allowed transition. Clicking a node highlights it.
+- **READ_FILE:** `animation_engine/editor/main.py`
+- **READ_LINES:** `338-392`
+- **READ_FILE:** `animation_engine/animation/blend_tree.py`
+- **READ_LINES:** `1-60, 131-175`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** Add `_build_state_graph_panel` ~line `392`; add `_redraw_state_graph` after `_redraw_timeline` ~line `685`
+- **Acceptance Criteria:** State Graph panel renders one node per BlendTreeState; transitions appear as arrows; panel redraws when blend tree state count changes.
+
+### Task 31
+- **Task Name:** Add animation retargeting utility
+- **Narrative Logic:** GameRewritten needs the same animation clips applied to multiple character skeletons (hero, enemy, NPC variants). Retargeting preserves pose intent while adapting to different proportions.
+- **Code Structure Need:** Add `retarget_clip(clip, source_skel, target_skel, bone_map)` at module level in `clip.py`. For each channel: (1) look up `bone_map[channel.bone_name]`; (2) scale TRANSLATION values by `target_bone.length / source_bone.length`; (3) copy ROTATION values unchanged; (4) skip unmapped bones.
+- **READ_FILE:** `animation_engine/animation/clip.py`
+- **READ_LINES:** `1-50, 175-220`
+- **READ_FILE:** `animation_engine/model/skeleton.py`
+- **READ_LINES:** `1-60`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** Add `retarget_clip` function after `from_dict` ~line `205`
+- **Acceptance Criteria:** `retarget_clip` with a 2x longer target bone scales root translation channels by 2.0 and leaves rotation channels unchanged.
+
+### Task 32
+- **Task Name:** Add skinning and IK solver unit tests
+- **Narrative Logic:** `cpu_skin_mesh` and `IKSolver` both exist and are used by the editor and runtime but have no direct unit tests. These tests protect against regressions when upstream math utilities change.
+- **Code Structure Need:** Add `test_cpu_skin_mesh_deforms_vertices` that applies a translation-only skin matrix and asserts output positions differ from input. Add `test_ik_solver_converges` that places two bones in a chain, sets a reachable goal, and asserts end-effector distance < 0.01 after `solve`.
+- **READ_FILE:** `tests/test_animation.py`
+- **READ_LINES:** `last 40 lines of file`
+- **READ_FILE:** `animation_engine/runtime/skinning.py`
+- **READ_LINES:** `36-65`
+- **READ_FILE:** `animation_engine/animation/ik_solver.py`
+- **READ_LINES:** `30-95`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** Append new tests at end of file
+- **Acceptance Criteria:** Both new tests pass with `python -m pytest tests/test_animation.py -q`.
+
+### Task 33
+- **Task Name:** Add retargeting and pack migration unit tests
+- **Narrative Logic:** Tasks 28 and 31 add new public functions with no test coverage. Tests lock in the migration and retargeting contracts before GameRewritten begins consuming these utilities.
+- **Code Structure Need:** Add `test_migrate_anim_dict_v1_to_v2` asserting that a dict without `events` key gains it and that existing keys survive. Add `test_retarget_clip_scales_translation` asserting that a clip with 1-unit root translation retargeted to a 2x-length skeleton produces 2-unit translation.
+- **READ_FILE:** `tests/test_io.py`
+- **READ_LINES:** `last 40 lines of file`
+- **READ_FILE:** `animation_engine/io/anim_format.py`
+- **READ_LINES:** `85-100`
+- **READ_FILE:** `animation_engine/animation/clip.py`
+- **READ_LINES:** `205-230`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** Append new tests at end of file
+- **Acceptance Criteria:** Both new tests pass with `python -m pytest tests/test_io.py -q`.
+
+### Task 34
+- **Task Name:** Update program_assessment.md with final completion scores
+- **Narrative Logic:** The assessment document was written before Tasks 1–34 were complete. Updating it gives new contributors and the GameRewritten team an accurate picture of what is production-ready.
+- **Code Structure Need:** In section 3 mark all gaps A–F as resolved (with brief notes on which tasks resolved them). In section 5 update each score to reflect completed state (target: all categories ≥ 8/10). In section 6 replace the recommendation list with a completion summary.
+- **READ_FILE:** `program_assessment.md`
+- **READ_LINES:** `FULL_FILE`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** Sections 3, 5, and 6 throughout the file
+- **Acceptance Criteria:** All six readiness scores in section 5 are updated; all gap items in section 3 include a "(Resolved — Task N)" note.
+
+---
+
+## Phase I Required Validation Gates (Tasks 23–34)
+
+1. `python -m pytest -q` — all tests pass including new Tasks 32 and 33 tests.
+2. `animation-engine batch-export-headers --manifest <pack.json> --output-dir /tmp/headers/` — exits 0 and writes one `.hpp` per clip.
+3. Load a v1 `.anim` dict through `AnimImporter` — no exception raised.
+4. Editor launches and State Graph panel renders at least one node.
+5. `program_assessment.md` section 5 shows all scores ≥ 8/10.
+
+---
+
 ## Output Contract for Mikester9000/GameRewritten Handoff
 
 At completion, export package must include:

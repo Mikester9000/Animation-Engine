@@ -175,3 +175,99 @@
 - **Check to adhere to Final Fantasy aesthetics:** Acceptance gate must explicitly fail if FF visual/gameplay/reference metadata compliance is broken.
 - **Name of the file to be edited or create:** `planv1.md`
 - **Line where code is to be edited or create:** Edit around `281-317`.
+
+## Task 23
+- **Task Name:** Render skinned mesh wireframe in PS2 viewport
+- **Coding logic of task and narrative design required:** Call `cpu_skin_mesh` with current-frame world matrices to deform bound mesh vertices, then project and draw triangle edges on the viewport canvas for a wire-mesh preview of the actual character geometry.
+- **Logic of how it functions in the program and design it must follow:** Viewport currently draws skeleton sticks only. After skinning, triangle edge lines (projected the same way as joint points) give PS2-era wireframe preview without GPU dependencies.
+- **Check to adhere to Final Fantasy aesthetics:** Wireframe colour should honour the active `PS2_LIGHTING_PRESETS` palette so the preview matches the intended PS2 rendering mood.
+- **Name of the file to be edited or create:** `animation_engine/editor/main.py`
+- **Line where code is to be edited or create:** Edit `_redraw_viewport` around `1488-1560`; add helper `_draw_mesh_wireframe` after `_draw_skeleton_world` around line `1608`.
+
+## Task 24
+- **Task Name:** Add F-curve editor panel for keyframe tangent visualisation
+- **Coding logic of task and narrative design required:** Add a collapsible canvas panel below the timeline that plots the selected channel's keyframe values over time, with draggable tangent handles for cubic-spline control.
+- **Logic of how it functions in the program and design it must follow:** `AnimationChannel` already stores cubic-spline keyframes. The curve panel reads channel data, draws a Bezier preview, and writes tangent overrides back via `add_keyframe`/`KeyframeType`.
+- **Check to adhere to Final Fantasy aesthetics:** Curve editor should make it easy to achieve the characteristic FF style: held anticipation, sharp impact, and smooth follow-through timing.
+- **Name of the file to be edited or create:** `animation_engine/editor/main.py`
+- **Line where code is to be edited or create:** Add `_build_curve_editor` after `_build_timeline` around line `577`; add `_redraw_curve_editor` and tangent drag handlers after line `685`.
+
+## Task 25
+- **Task Name:** Expose IK posing mode in editor viewport
+- **Coding logic of task and narrative design required:** Add an IK mode toggle button in the toolbar. When active, clicking a joint in the viewport sets it as the end-effector goal, and dragging solves the chain with `IKSolver` from `animation_engine/animation/ik_solver.py`, writing the result as a keyframe at the current playhead time.
+- **Logic of how it functions in the program and design it must follow:** `IKSolver.solve` exists but is not wired to the editor. IK mode bypasses FK property entry for faster pose blocking, especially for foot-planting and hand-contact poses common in FF-style combat animation.
+- **Check to adhere to Final Fantasy aesthetics:** IK should enable efficient blocking of held contact poses that are characteristic of PS2-era expressive body language.
+- **Name of the file to be edited or create:** `animation_engine/editor/main.py`
+- **Line where code is to be edited or create:** Add IK toggle around `_build_toolbar` at line `243`; add `_on_viewport_ik_drag` handler around line `1480`; add `_apply_ik_pose` after line `1490`.
+
+## Task 26
+- **Task Name:** Improve procedural walk and run cycle motion quality
+- **Coding logic of task and narrative design required:** Replace the existing simple root-bob walk with a proper stride-based cycle: alternating foot placements via hip lateral sway, forward root translation, counter-rotating pelvis and shoulders, and arm swing on separate channels.
+- **Logic of how it functions in the program and design it must follow:** `ProceduralBackend.generate_clip` dispatches on `motion_type`; the `walk` and `run` branches should be replaced with multi-bone keyframe sequences that produce a believable eight-count stride loop when played at their respective `duration` values.
+- **Check to adhere to Final Fantasy aesthetics:** Walk should feel heroic and readable at PS2 resolution: deliberate foot placement, slight hip rotation, controlled arm swing. Run should be fast but retain silhouette clarity.
+- **Name of the file to be edited or create:** `animation_engine/backend.py`
+- **Line where code is to be edited or create:** Edit walk branch around lines `200-225` and run branch around lines `265-310`.
+
+## Task 27
+- **Task Name:** Improve procedural combat clip motion quality
+- **Coding logic of task and narrative design required:** Rewrite attack, heavy attack, cast, and dodge branches to include anticipation wind-up, sharp impact peak, and follow-through/recovery phases using multi-keyframe sequences on spine, shoulders, and arm bones.
+- **Logic of how it functions in the program and design it must follow:** Current combat branches set only one or two rotation keyframes. New logic should use at least five keyframes per clip (rest, anticipate, attack, impact, recover) to produce the staged FF-style combat readability.
+- **Check to adhere to Final Fantasy aesthetics:** Each combat clip must have a readable silhouette change at every phase; impact frames should be visually distinct and held for at least one frame's worth of duration.
+- **Name of the file to be edited or create:** `animation_engine/backend.py`
+- **Line where code is to be edited or create:** Edit attack around lines `430-480`, heavy_attack around `495-540`, cast around `550-600`, dodge around `615-660`.
+
+## Task 28
+- **Task Name:** Add pack format version migration utility
+- **Coding logic of task and narrative design required:** Add a `migrate_anim_dict(d: dict) -> dict` function that detects schema version from the `"version"` key (or its absence) and upgrades v1 dicts (no events, no gameplay_tags) to v2 format by inserting empty defaults.
+- **Logic of how it functions in the program and design it must follow:** `AnimImporter.load` currently raises on unknown keys. Migration runs before `from_dict` so old assets load cleanly. `AnimExporter` always writes v2. Migration is idempotent: running twice returns same result.
+- **Check to adhere to Final Fantasy aesthetics:** Migrated clips must preserve all existing style_profile and art-direction metadata fields without modification.
+- **Name of the file to be edited or create:** `animation_engine/io/anim_format.py`
+- **Line where code is to be edited or create:** Add `migrate_anim_dict` around line `95`; call it at top of `AnimImporter.load` around line `165`.
+
+## Task 29
+- **Task Name:** Add batch-export-headers CLI subcommand
+- **Coding logic of task and narrative design required:** Add a `batch-export-headers` subcommand that reads a pack manifest JSON, iterates every entry in `ordered_files`, loads each `.anim` file, and calls `anim_to_cpp_header.py`-equivalent logic to write per-clip C++ header files into an `--output-dir`.
+- **Logic of how it functions in the program and design it must follow:** `compat/anim_to_cpp_header.py` already has `AnimToHeaderConverter`; the CLI subcommand wraps it in a loop driven by the manifest. Exit code is non-zero if any clip fails.
+- **Check to adhere to Final Fantasy aesthetics:** Emitted headers must include style-profile metadata fields so GameRewritten runtime can enforce FF art-direction compliance at load time.
+- **Name of the file to be edited or create:** `animation_engine/cli.py`
+- **Line where code is to be edited or create:** Add `_cmd_batch_export_headers` around line `374`; add `batch_export_headers_parser` in `build_parser` around line `545`.
+
+## Task 30
+- **Task Name:** Add blend tree state graph panel in editor
+- **Coding logic of task and narrative design required:** Add a "State Graph" tab or side panel that renders each `BlendTreeState` as a rounded rectangle and each allowed transition as a directed arrow between them, drawn on a Tkinter canvas. Clicking a node selects it and shows its parameters in the Properties panel.
+- **Logic of how it functions in the program and design it must follow:** `BlendTree` holds a `states` dict and `transitions` list accessible from the editor's `animator.blend_tree`. The panel redraws whenever the clip list changes. No interactive editing required in this task—read-only visualisation only.
+- **Check to adhere to Final Fantasy aesthetics:** State graph colours should follow the dark editor palette (`BG_COLOR`, `ACCENT_COLOR`) and communicate clean separation between locomotion, combat, and reaction state clusters.
+- **Name of the file to be edited or create:** `animation_engine/editor/main.py`
+- **Line where code is to be edited or create:** Add `_build_state_graph_panel` after `_build_centre_panel` around line `392`; add `_redraw_state_graph` after `_redraw_timeline` around line `685`.
+
+## Task 31
+- **Task Name:** Add animation retargeting utility
+- **Coding logic of task and narrative design required:** Add a `retarget_clip(clip, source_skel, target_skel, bone_map)` function that takes a clip authored for `source_skel` and returns a new clip with channels remapped to `target_skel` bone names, scaling translations proportionally using the ratio of bone chain lengths.
+- **Logic of how it functions in the program and design it must follow:** Retargeting reads each channel's bone name, looks it up in `bone_map` (dict of source→target names), scales any TRANSLATION channel by `target_bone.length / source_bone.length`, and copies ROTATION channels unchanged.
+- **Check to adhere to Final Fantasy aesthetics:** Retargeted clips must preserve the characteristic pose silhouettes and timing of the source animation even when skeleton proportions differ between FF-style character variants.
+- **Name of the file to be edited or create:** `animation_engine/animation/clip.py`
+- **Line where code is to be edited or create:** Add `retarget_clip` function after `from_dict` around line `205`.
+
+## Task 32
+- **Task Name:** Add skinning and IK solver unit tests
+- **Coding logic of task and narrative design required:** Add tests that (a) verify `cpu_skin_mesh` returns a mesh with the same vertex count but different positions when a non-identity skin matrix is applied, and (b) verify `IKSolver.solve` converges the end-effector within 1 cm of a reachable target within the iteration limit.
+- **Logic of how it functions in the program and design it must follow:** Tests import `cpu_skin_mesh` from `animation_engine.runtime.skinning` and `IKSolver` from `animation_engine.animation.ik_solver`, construct minimal fixtures, and assert correctness without needing a real skeleton.
+- **Check to adhere to Final Fantasy aesthetics:** IK convergence test target positions should be foot-contact and hand-grip locations typical of FF PS2-era pose blocking (e.g. foot flat on ground at y=0).
+- **Name of the file to be edited or create:** `tests/test_animation.py`
+- **Line where code is to be edited or create:** Add new tests at end of file.
+
+## Task 33
+- **Task Name:** Add retargeting and pack migration unit tests
+- **Coding logic of task and narrative design required:** Add tests that (a) verify `retarget_clip` remaps bone names and scales translations correctly for a two-bone source/target pair, and (b) verify `migrate_anim_dict` upgrades a v1 dict (missing `events`, `gameplay_tags`) to a valid v2 dict without data loss.
+- **Logic of how it functions in the program and design it must follow:** Retargeting test builds a minimal clip with known keyframes and bone_map, asserts channel bone names change and translation magnitudes scale. Migration test asserts default keys are inserted and existing keys are preserved.
+- **Check to adhere to Final Fantasy aesthetics:** Migration test must assert that `style_profile`, `visual_target`, and `gameplay_target` fields are preserved untouched from the original v1 payload.
+- **Name of the file to be edited or create:** `tests/test_io.py`
+- **Line where code is to be edited or create:** Add new tests at end of file.
+
+## Task 34
+- **Task Name:** Update program_assessment.md with final completion scores
+- **Coding logic of task and narrative design required:** Rewrite the gap sections and readiness scores in `program_assessment.md` to reflect all implemented features (Tasks 1–34), marking gaps as resolved and updating each category score to its post-completion value.
+- **Logic of how it functions in the program and design it must follow:** Assessment drives onboarding clarity; an accurate final score communicates project completion status to future contributors and the GameRewritten integration team.
+- **Check to adhere to Final Fantasy aesthetics:** Confirm in the assessment that PS2-era viewport, motion quality improvements, and FF art-direction metadata compliance are all marked as production-ready.
+- **Name of the file to be edited or create:** `program_assessment.md`
+- **Line where code is to be edited or create:** Edit sections 3, 5, and 6 throughout the file.
