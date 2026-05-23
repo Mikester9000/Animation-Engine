@@ -264,7 +264,7 @@ ac.transitionTo("run_cycle", 0.3f);
 
 ## Supported .anim Schema Fields
 
-The C++ bridge reads all fields defined in `Animation Engine 1.0`:
+The C++ bridge reads all fields defined in `Animation Engine 2.0`:
 
 | JSON field | C++ struct | Notes |
 |------------|-----------|-------|
@@ -283,12 +283,24 @@ The C++ bridge reads all fields defined in `Animation Engine 1.0`:
 | `clips[].channels[].keyframes[].in_tangent` | `AE_Keyframe.inTangent[4]` | CUBIC only |
 | `clips[].channels[].keyframes[].out_tangent` | `AE_Keyframe.outTangent[4]` | CUBIC only |
 | `clips[].channels[].keyframes[].interp` | `AE_Keyframe.interp` | STEP/LINEAR/CUBIC |
+| `clips[].events[].name` | `AE_AnimClip::Event.name` | Named timeline marker (e.g. `footstep_left`, `hit_window_open`) |
+| `clips[].events[].time` | `AE_AnimClip::Event.time` | Trigger time in seconds |
+| `clips[].events[].data` | `AE_AnimClip::Event.data` | Arbitrary JSON object; serialised as key=value pairs in C++ |
 | `morph_tracks[].morph_name` | `AE_MorphTrack.morphName` | |
 | `morph_tracks[].keyframes` | `AE_MorphTrack.keyframes` | |
-| `metadata.style_profile` | external pack selection | Profile ID used during generation |
-| `metadata.visual_target` | external art-direction check | PS2-era visual target string |
-| `metadata.gameplay_target` | external gameplay check | Modern gameplay support string |
-| `metadata.reference_titles[]` | external review/import check | Final Fantasy art-direction references |
+| `metadata.style_profile` | `AE_AnimPackage.styleProfile` | Profile ID used during generation (e.g. `ff10_ps2`) |
+| `metadata.motion_type` | `AE_AnimPackage.motionType` | Semantic motion category (e.g. `idle`, `attack`) |
+| `metadata.visual_target` | `AE_AnimPackage.visualTarget` | PS2-era visual target string |
+| `metadata.gameplay_target` | `AE_AnimPackage.gameplayTarget` | Modern gameplay support string |
+| `metadata.reference_titles[]` | `AE_AnimPackage.referenceTitles` | Final Fantasy art-direction references |
+| `metadata.duration` | `AE_AnimPackage.duration` | Clip duration in seconds |
+| `metadata.sample_rate` | `AE_AnimPackage.sampleRate` | Frames per second at generation time |
+| `metadata.locomotion_category` | `AE_AnimPackage.locomotionCategory` | Optional locomotion sub-class (e.g. `idle`, `walk`) |
+| `metadata.root_motion_policy` | `AE_AnimPackage.rootMotionPolicy` | `none` / `extract` / `apply` |
+| `metadata.interaction_tags[]` | `AE_AnimPackage.interactionTags` | Optional gameplay tags (e.g. `[\"ladder\", \"water\"]`) |
+| `metadata.transition_intent` | `AE_AnimPackage.transitionIntent` | Hint for BlendTree wiring (e.g. `entry_loop`, `one_shot`) |
+| `schema_version` (manifest) | `AE_AnimPackage.schemaVersion` | `"2.0"` — present in `pack_manifest.json` |
+| `gameplay_semantic` (manifest) | `AE_AnimPackage.gameplaySemantic` | Category coverage map from the manifest |
 
 ---
 

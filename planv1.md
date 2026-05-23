@@ -294,8 +294,8 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 
 | Gate | Status | Details |
 |------|--------|---------|
-| `python -m pytest -q` | ✅ PASS | 176 tests pass (0 failures, 0 errors) |
-| `generate-pack` (ff10_ps2 profile) | ✅ PASS | 43/43 clips generated; `pack_manifest.json` written with profile ID, visual_target, gameplay_target, reference_titles, ordered_files, seed, sample_rate, generation_version |
+| `python -m pytest -q` | ✅ PASS | 197 tests pass (0 failures, 0 errors) |
+| `generate-pack` (ff10_ps2 profile) | ✅ PASS | 57/57 clips generated; `pack_manifest.json` written with profile ID, visual_target, gameplay_target, reference_titles, ordered_files, seed, sample_rate, generation_version |
 | `validate-pack` against generated manifest | ✅ PASS | Style report VALID; all required clips present in correct order; per-clip art-direction fields verified |
 | Manifest lists all required clips in order | ✅ PASS | `ordered_files` entries match `required_clips` in profile definition |
 | Byte-stable deterministic output | ✅ PASS | `test_pipeline_byte_stable_output_same_inputs` confirms identical MD5s across two identical runs |
@@ -304,7 +304,10 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 | Quality gates — manifest art-direction | ✅ PASS | `validate-pack` enforces `visual_target`, `gameplay_target`, `reference_titles` match selected profile |
 | Quality gates — per-clip metadata | ✅ PASS | `validate-pack` enforces per-clip `style_profile`, `motion_type`, art-direction fields, duration, sample_rate |
 | Deterministic defaults pinned | ✅ PASS | `PIPELINE_DEFAULT_BACKEND`, `PIPELINE_DEFAULT_SAMPLE_RATE`, `PIPELINE_DEFAULT_SEED`, `PIPELINE_DEFAULT_PROFILE_ID`, `PIPELINE_GENERATION_VERSION` exported from `asset_pipeline.py` |
-| BlendTree parameter context (Task 13) | ✅ PASS | `self._context` initialised in `BlendTree.__init__`; `set_parameter()` no longer raises `AttributeError` |
+| BlendTree `has_exit_time` enforcement (Task 13) | ✅ PASS | Exit-time deferred transitions, auto-condition transitions, and context merging fully implemented in `blend_tree.py`; 9 new tests added in `test_animation.py` |
+| BlendTree `get_events_in_window` (Task 13) | ✅ PASS | `AnimationClip.get_events_in_window(start, end)` added to `clip.py`; event timing window tests passing |
+| glTF extras — events + loop flag (Task 14) | ✅ PASS | `GltfExporter` writes `extras.loop` + `extras.events`; `GltfImporter` reads them back; 3 new tests added in `test_io.py` |
+| `.anim` event serialization compat (Task 18) | ✅ PASS | Legacy (no events key) and forward-compat (unknown data keys) tests added in `test_io.py` |
 | C++ header events + metadata (Task 15) | ✅ PASS | `anim_to_cpp_header.py` emits clip events and style-profile metadata; `GameEngineCompat.hpp` `AE_AnimClip::Event` struct and `AE_AnimPackage` metadata fields added |
 | Editor event track UI (Task 21) | ✅ PASS | `AnimationEditor` right panel includes Add/Remove event controls; events rendered as markers on the timeline canvas |
 

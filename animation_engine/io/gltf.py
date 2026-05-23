@@ -356,7 +356,17 @@ class GltfExporter:
 
         if not samplers:
             return None
-        return {"name": clip.name, "samplers": samplers, "channels": channels}
+        anim_def: dict = {"name": clip.name, "samplers": samplers, "channels": channels}
+        # Embed animation event markers and loop flag in glTF extras for import symmetry.
+        extras: dict = {"loop": clip.loop}
+        events = clip.get_events()
+        if events:
+            extras["events"] = [
+                {"name": e["name"], "time": e["time"], "data": e.get("data", {})}
+                for e in events
+            ]
+        anim_def["extras"] = extras
+        return anim_def
 
     # -- binary buffer helpers -----------------------------------------------
 
@@ -574,6 +584,14 @@ class GltfImporter:
                 for j, t in enumerate(times_raw.flatten()):
                     val = values_raw[j].tolist()
                     clip.add_keyframe(bone_name, ch_target, float(t), val, interp)
+
+            # Restore extras written by GltfExporter (loop flag + event markers).
+            extras = anim_def.get("extras") or {}
+            if "loop" in extras:
+                clip.loop = bool(extras["loop"])
+            for ev in extras.get("events", []):
+                if isinstance(ev, dict) and "name" in ev and "time" in ev:
+                    clip.add_event(ev["name"], float(ev["time"]), ev.get("data") or {})
 
             clips.append(clip)
         return clips

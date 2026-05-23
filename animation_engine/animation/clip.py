@@ -80,6 +80,10 @@ class AnimationClip:
             events = [e for e in events if e["name"] == name]
         return events
 
+    def get_events_in_window(self, start: float, end: float) -> List[dict]:
+        """Return events whose time satisfies start <= time < end, sorted by time."""
+        return [e for e in self.get_events() if start <= e["time"] < end]
+
     # -- channel management --------------------------------------------------
 
     def get_channel(

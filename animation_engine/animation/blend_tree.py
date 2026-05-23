@@ -158,6 +158,10 @@ class BlendTree:
         self._pending_trigger: Optional[str] = None
         self._context: dict = {}
 
+        # Exit-time deferred transition
+        self._exit_time_target: Optional[str] = None
+        self._exit_time_transition: Optional[BlendTransition] = None
+
     # -- building the graph --------------------------------------------------
 
     def add_state(self, state: BlendState) -> None:
@@ -206,7 +210,9 @@ class BlendTree:
         -------
         Per-bone Transforms representing the current blended pose.
         """
-        ctx = context or {}
+        ctx = dict(self._context)
+        if context:
+            ctx.update(context)
 
         # -- Process pending transition request --------------------------
         if self._pending_trigger is not None and self._current_state is not None:
@@ -215,11 +221,39 @@ class BlendTree:
             transition = self._find_transition(
                 self._current_state.name, target_name, ctx
             )
-            if transition and target_name in self._states:
-                self._next_state = self._states[target_name]
-                self._next_state.reset()
-                self._blend_duration = max(transition.duration, 1e-6)
-                self._blend_time = 0.0
+            if transition is not None and target_name in self._states:
+                # has_exit_time: defer until clip reaches its natural end
+                if transition.has_exit_time:
+                    self._exit_time_target = target_name
+                    self._exit_time_transition = transition
+                else:
+                    self._start_transition(target_name, transition)
+
+        # -- Auto-trigger exit-time transitions when clip ends -----------
+        if (
+            self._exit_time_target is not None
+            and self._current_state is not None
+            and self._next_state is None
+        ):
+            clip_dur = self._current_state.clip.duration
+            if clip_dur > 1e-6:
+                local_time = self._current_state._local_time
+                if local_time >= clip_dur:
+                    target_name = self._exit_time_target
+                    transition = self._exit_time_transition
+                    self._exit_time_target = None
+                    self._exit_time_transition = None
+                    if target_name in self._states and transition is not None:
+                        self._start_transition(target_name, transition)
+
+        # -- Auto-condition transitions (no explicit trigger required) -----
+        if self._current_state is not None and self._next_state is None:
+            for tr in self._transitions:
+                if tr.from_state == self._current_state.name and tr.condition is not None:
+                    if not tr.has_exit_time and tr.is_eligible(ctx):
+                        if tr.to_state in self._states:
+                            self._start_transition(tr.to_state, tr)
+                            break
 
         # -- Advance local times -----------------------------------------
         if self._current_state:
@@ -253,6 +287,13 @@ class BlendTree:
             b = next_pose.get(bone_name, Transform.identity())
             blended[bone_name] = a.lerp(b, alpha)
         return blended
+
+    def _start_transition(self, target_name: str, transition: "BlendTransition") -> None:
+        """Begin a crossfade to *target_name* using *transition* settings."""
+        self._next_state = self._states[target_name]
+        self._next_state.reset()
+        self._blend_duration = max(transition.duration, 1e-6)
+        self._blend_time = 0.0
 
     def _find_transition(
         self, from_name: str, to_name: str, context: dict
