@@ -39,6 +39,7 @@ class AnimationClip:
         self.name: str = name
         self.fps: float = fps
         self.loop: bool = loop
+        self.motion_type: str = ""
         # Channels keyed by (bone_name, ChannelTarget)
         self._channels: Dict[Tuple[str, ChannelTarget], AnimationChannel] = {}
         # Event markers: list of {"name": str, "time": float, "data": dict}
@@ -186,11 +187,50 @@ class AnimationClip:
 
     # -- serialisation -------------------------------------------------------
 
+    def rename_bone_channels(self, old_bone_name: str, new_bone_name: str) -> int:
+        """Rename all channels that reference *old_bone_name* to *new_bone_name*.
+
+        If a destination channel already exists for the same target, keyframes
+        are merged into that destination channel. Duplicate timestamps are
+        resolved using AnimationChannel.add_keyframe() replacement semantics.
+
+        Returns the number of channels updated.
+        """
+        if old_bone_name == new_bone_name:
+            return 0
+        keys_to_rename = [
+            k for k in self._channels if k[0] == old_bone_name
+        ]
+        for key in keys_to_rename:
+            new_key = (new_bone_name, key[1])
+            if new_key in self._channels:
+                existing = self._channels[new_key]
+                source = self._channels[key]
+                for kf in source.keyframes:
+                    existing.add_keyframe(kf)
+                del self._channels[key]
+                continue
+            ch = self._channels.pop(key)
+            ch.bone_name = new_bone_name
+            self._channels[new_key] = ch
+        return len(keys_to_rename)
+
+    def remove_bone_channels(self, bone_name: str) -> int:
+        """Remove all animation channels for *bone_name*.
+
+        Returns the number of channels removed.
+        """
+        keys_to_remove = [k for k in self._channels if k[0] == bone_name]
+        for key in keys_to_remove:
+            del self._channels[key]
+        return len(keys_to_remove)
+
     def to_dict(self) -> dict:
         d = {
             "name": self.name,
             "fps": self.fps,
             "loop": self.loop,
+            "motion_type": self.motion_type,
             "channels": [ch.to_dict() for ch in self._channels.values()],
         }
         if self._events:
@@ -204,6 +244,7 @@ class AnimationClip:
             fps=d.get("fps", 30.0),
             loop=d.get("loop", True),
         )
+        clip.motion_type = str(d.get("motion_type", ""))
         for ch_data in d.get("channels", []):
             ch = AnimationChannel.from_dict(ch_data)
             clip._channels[(ch.bone_name, ch.target)] = ch

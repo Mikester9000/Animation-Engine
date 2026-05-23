@@ -172,6 +172,8 @@ class AnimationEditor:
         edit_menu.add_command(label="Delete Clip", command=self._delete_clip)
         edit_menu.add_separator()
         edit_menu.add_command(label="Add Bone", command=self._add_bone)
+        edit_menu.add_command(label="Rename Bone…", command=self._rename_bone)
+        edit_menu.add_command(label="Delete Bone", command=self._delete_bone)
         edit_menu.add_separator()
         edit_menu.add_command(
             label="Generate Clips from Profile…", command=self._generate_from_profile
@@ -186,6 +188,18 @@ class AnimationEditor:
         pb_menu.add_command(label="Stop", command=self._stop_playback)
         pb_menu.add_command(label="Go to Start", accelerator="Home", command=self._go_to_start)
         menubar.add_cascade(label="Playback", menu=pb_menu)
+
+        # Tools menu
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu.add_command(
+            label="Open Production Pack Builder…", command=self._launch_pack_builder
+        )
+        tools_menu.add_command(
+            label="Validate Active File…", command=self._validate_active_file
+        )
+        tools_menu.add_separator()
+        tools_menu.add_command(label="Clip Settings…", command=self._edit_clip_settings)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
 
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -326,6 +340,8 @@ class AnimationEditor:
         self.bone_tree = ttk.Treeview(parent, show="tree", selectmode="browse")
         self.bone_tree.pack(fill=tk.BOTH, expand=True, padx=4, pady=2)
         self.bone_tree.bind("<<TreeviewSelect>>", self._on_bone_selected)
+        self.bone_tree.bind("<Button-3>", self._on_bone_tree_right_click)
+        self.bone_tree.bind("<Button-2>", self._on_bone_tree_right_click)
 
         # Style the treeview dark
         style = ttk.Style()
@@ -352,6 +368,71 @@ class AnimationEditor:
         self.clip_listbox.bind("<<ListboxSelect>>", self._on_clip_list_selected)
         self.clip_listbox.bind("<Button-3>", self._on_clip_list_right_click)
         self.clip_listbox.bind("<Button-2>", self._on_clip_list_right_click)
+
+        # Clip settings strip (FPS, duration, motion_type)
+        sep_clip = tk.Frame(parent, bg=GRID_COLOR, height=1)
+        sep_clip.pack(fill=tk.X, padx=4, pady=(4, 2))
+        tk.Label(
+            parent, text="Clip Settings", bg=BG_COLOR, fg=ACCENT_COLOR, font=("Helvetica", 9, "bold")
+        ).pack(fill=tk.X, padx=4)
+        self._clip_fps_var = tk.StringVar(value="30.0")
+        self._clip_dur_var = tk.StringVar(value="0.000 s")
+        self._clip_motion_var = tk.StringVar()
+        self._clip_loop_left_var = tk.BooleanVar(value=True)
+        for label, var, editable in [
+            ("FPS", self._clip_fps_var, True),
+            ("Duration", self._clip_dur_var, False),
+            ("Motion Type", self._clip_motion_var, True),
+        ]:
+            row = tk.Frame(parent, bg=BG_COLOR)
+            row.pack(fill=tk.X, padx=4, pady=1)
+            tk.Label(row, text=label + ":", bg=BG_COLOR, fg=TEXT_COLOR, width=10, anchor="e").pack(
+                side=tk.LEFT
+            )
+            state = tk.NORMAL if editable else tk.DISABLED
+            entry = tk.Entry(
+                row, textvariable=var, bg="#333" if editable else "#252525",
+                fg=TEXT_COLOR, insertbackground=TEXT_COLOR, relief=tk.FLAT,
+                width=12, state=state,
+            )
+            entry.pack(side=tk.LEFT, padx=2)
+        tk.Checkbutton(
+            parent, text="Loop", variable=self._clip_loop_left_var,
+            command=self._on_clip_settings_loop_toggled,
+            bg=BG_COLOR, fg=TEXT_COLOR, selectcolor=BG_COLOR,
+            activebackground=BG_COLOR, activeforeground=TEXT_COLOR,
+        ).pack(anchor="w", padx=4)
+        tk.Button(
+            parent, text="Apply Clip Settings", bg=ACCENT_COLOR, fg="#111",
+            relief=tk.FLAT, command=self._apply_clip_settings,
+        ).pack(fill=tk.X, padx=4, pady=(2, 6))
+
+        # Morph Track browser
+        sep_morph = tk.Frame(parent, bg=GRID_COLOR, height=1)
+        sep_morph.pack(fill=tk.X, padx=4, pady=(4, 2))
+        tk.Label(
+            parent, text="Morph Tracks", bg=BG_COLOR, fg=ACCENT_COLOR,
+            font=("Helvetica", 9, "bold"),
+        ).pack(fill=tk.X, padx=4)
+        self.morph_listbox = tk.Listbox(
+            parent, bg="#252525", fg=TEXT_COLOR, selectbackground=ACCENT_COLOR,
+            relief=tk.FLAT, height=4, font=("Helvetica", 8),
+        )
+        self.morph_listbox.pack(fill=tk.X, padx=4, pady=(0, 2))
+        morph_btn_row = tk.Frame(parent, bg=BG_COLOR)
+        morph_btn_row.pack(fill=tk.X, padx=4, pady=(0, 4))
+        tk.Button(
+            morph_btn_row, text="Add", bg="#555", fg=TEXT_COLOR, relief=tk.FLAT, padx=4,
+            command=self._add_morph_track,
+        ).pack(side=tk.LEFT, padx=(0, 2))
+        tk.Button(
+            morph_btn_row, text="Add KF", bg="#555", fg=TEXT_COLOR, relief=tk.FLAT, padx=4,
+            command=self._add_morph_keyframe,
+        ).pack(side=tk.LEFT, padx=(0, 2))
+        tk.Button(
+            morph_btn_row, text="Remove", bg="#555", fg=TEXT_COLOR, relief=tk.FLAT, padx=4,
+            command=self._remove_morph_track,
+        ).pack(side=tk.LEFT)
 
     def _build_centre_panel(self, parent: tk.Frame) -> None:
         header = tk.Frame(parent, bg="#1a1a1a")
@@ -794,6 +875,173 @@ class AnimationEditor:
                 )
         self._redraw_viewport()
 
+    # -----------------------------------------------------------------------
+    # Clip Settings helpers
+    # -----------------------------------------------------------------------
+
+    def _refresh_clip_settings(self) -> None:
+        """Sync the Clip Settings strip with the active clip."""
+        if not hasattr(self, "_clip_fps_var"):
+            return
+        clip = self.active_clip
+        if clip is None:
+            self._clip_fps_var.set("30.0")
+            self._clip_dur_var.set("0.000 s")
+            self._clip_motion_var.set("")
+            self._clip_loop_left_var.set(False)
+            return
+        self._clip_fps_var.set(f"{clip.fps:.4g}")
+        self._clip_dur_var.set(f"{clip.duration:.3f} s")
+        motion = getattr(clip, "motion_type", "") or ""
+        self._clip_motion_var.set(motion)
+        self._clip_loop_left_var.set(bool(clip.loop))
+
+    def _apply_clip_settings(self) -> None:
+        """Write FPS and motion_type from the Clip Settings strip into the active clip."""
+        if not self.active_clip:
+            return
+        try:
+            fps = float(self._clip_fps_var.get())
+            if fps <= 0.0:
+                raise ValueError("FPS must be positive.")
+            self.active_clip.fps = fps
+        except ValueError as exc:
+            messagebox.showwarning("Clip Settings", f"Invalid FPS: {exc}")
+            return
+        motion_type = self._clip_motion_var.get().strip()
+        self.active_clip.motion_type = motion_type
+        self.active_clip.loop = bool(self._clip_loop_left_var.get())
+        self.loop_var.set(self.active_clip.loop)
+        self._mark_dirty()
+        self._refresh_clip_settings()
+        self.status_var.set(
+            f"Clip settings updated: fps={self.active_clip.fps}, motion_type={motion_type!r}"
+        )
+
+    def _on_clip_settings_loop_toggled(self) -> None:
+        if self.active_clip:
+            self.active_clip.loop = bool(self._clip_loop_left_var.get())
+            self.loop_var.set(self.active_clip.loop)
+            self._mark_dirty()
+
+    def _edit_clip_settings(self) -> None:
+        """Open Clip Settings dialog (keyboard shortcut / Tools menu)."""
+        self._apply_clip_settings()
+
+    # -----------------------------------------------------------------------
+    # Morph Track helpers
+    # -----------------------------------------------------------------------
+
+    def _refresh_morph_track_list(self) -> None:
+        """Sync the morph track listbox with the current morph_tracks list."""
+        if not hasattr(self, "morph_listbox"):
+            return
+        self.morph_listbox.delete(0, tk.END)
+        for mt in self.morph_tracks:
+            kf_count = len(mt.keyframes)
+            self.morph_listbox.insert(tk.END, f"{mt.morph_name}  ({kf_count} kf)")
+
+    def _add_morph_track(self) -> None:
+        """Prompt for a morph target name and create a new MorphTrack."""
+        dialog = _SimpleDialog(self.root, title="Add Morph Track", prompt="Morph target name:")
+        name = dialog.result
+        if not name:
+            return
+        name = name.strip()
+        if any(mt.morph_name == name for mt in self.morph_tracks):
+            messagebox.showwarning("Add Morph Track", f"A track named '{name}' already exists.")
+            return
+        self.morph_tracks.append(MorphTrack(name))
+        self._refresh_morph_track_list()
+        self._mark_dirty()
+        self.status_var.set(f"Added morph track '{name}'.")
+
+    def _add_morph_keyframe(self) -> None:
+        """Add a weight keyframe at the current playhead time for the selected morph track."""
+        sel = self.morph_listbox.curselection()
+        if not sel:
+            messagebox.showinfo("Add Morph Keyframe", "Select a morph track first.")
+            return
+        mt = self.morph_tracks[sel[0]]
+        dialog = _SimpleDialog(
+            self.root, title="Morph Keyframe",
+            prompt=f"Weight [0..1] for '{mt.morph_name}' at t={self.playback.time_seconds:.3f}s:"
+        )
+        if not dialog.result:
+            return
+        try:
+            raw_weight = float(dialog.result)
+        except ValueError:
+            messagebox.showwarning("Morph Keyframe", "Enter a numeric weight.")
+            return
+        weight = max(0.0, min(1.0, raw_weight))
+        if weight != raw_weight:
+            messagebox.showinfo(
+                "Morph Keyframe", f"Weight clamped to {weight:.3f} (input {raw_weight:.3f})."
+            )
+        mt.add_keyframe(self.playback.time_seconds, weight)
+        self._refresh_morph_track_list()
+        self._mark_dirty()
+        self.status_var.set(
+            f"Morph keyframe: {mt.morph_name} weight={weight:.3f} t={self.playback.time_seconds:.3f}s"
+        )
+
+    def _remove_morph_track(self) -> None:
+        """Remove the selected morph track."""
+        sel = self.morph_listbox.curselection()
+        if not sel:
+            return
+        mt = self.morph_tracks[sel[0]]
+        confirmed = messagebox.askyesno(
+            "Remove Morph Track", f"Delete morph track '{mt.morph_name}'?"
+        )
+        if confirmed:
+            self.morph_tracks.pop(sel[0])
+            self._refresh_morph_track_list()
+            self._mark_dirty()
+
+    # -----------------------------------------------------------------------
+    # Tools menu handlers
+    # -----------------------------------------------------------------------
+
+    def _launch_pack_builder(self) -> None:
+        """Open the Production Pack Builder as a separate process."""
+        import subprocess
+        import sys
+
+        try:
+            subprocess.Popen(
+                [sys.executable, "-m", "animation_engine.gui.production_pack_gui"],
+                close_fds=True,
+            )
+        except Exception as exc:
+            messagebox.showerror("Production Pack Builder", str(exc))
+
+    def _validate_active_file(self) -> None:
+        """Run the CLI validate-clip command on the active file and show results."""
+        if not self._current_file:
+            messagebox.showinfo("Validate", "Save the file first before validating.")
+            return
+        import io
+        from contextlib import redirect_stdout
+        from animation_engine.cli import build_parser, _cmd_validate_clip
+
+        parser = build_parser()
+        buf = io.StringIO()
+        try:
+            args = parser.parse_args(["validate-clip", "--input", self._current_file])
+            with redirect_stdout(buf):
+                code = _cmd_validate_clip(args)
+        except Exception as exc:
+            messagebox.showerror("Validate", str(exc))
+            return
+        output = buf.getvalue()
+        title = "Validation Passed" if code == 0 else "Validation Failed"
+        if code == 0:
+            messagebox.showinfo(title, output or "All clips valid.")
+        else:
+            messagebox.showerror(title, output or "Validation failed.")
+
 
     def _build_timeline(self, parent: tk.Frame) -> None:
         """Build the scrollable timeline strip."""
@@ -1023,6 +1271,8 @@ class AnimationEditor:
             self._populate_bone_tree("", self.model.skeleton, -1)
 
         self._refresh_event_list()
+        self._refresh_morph_track_list()
+        self._refresh_clip_settings()
         self._sync_playback_controls()
         self._redraw_timeline()
         self._redraw_viewport()
@@ -1456,6 +1706,89 @@ class AnimationEditor:
             self.model.skeleton.compute_bind_pose()
             self._mark_dirty()
             self._refresh_ui()
+
+    def _rename_bone(self) -> None:
+        """Prompt for a new name and rename the selected bone."""
+        if not self.model or not self.model.skeleton:
+            return
+        selected = self.bone_tree.focus()
+        if not selected:
+            messagebox.showinfo("Rename Bone", "No bone selected.")
+            return
+        dialog = _SimpleDialog(
+            self.root,
+            title="Rename Bone",
+            prompt="New bone name:",
+            initial=selected,
+        )
+        new_name = dialog.result
+        if not new_name:
+            return
+        new_name = new_name.strip()
+        if new_name == selected:
+            return
+        if not self.model.skeleton.rename_bone(selected, new_name):
+            messagebox.showwarning(
+                "Rename Bone",
+                f"Cannot rename '{selected}': name '{new_name}' is already taken or bone not found.",
+            )
+            return
+        # Update all animation channels in every clip that reference the old name
+        for clip in self.clips:
+            clip.rename_bone_channels(selected, new_name)
+        self.model.skeleton.compute_bind_pose()
+        self._mark_dirty()
+        self._refresh_ui()
+        self.status_var.set(f"Bone '{selected}' renamed to '{new_name}'.")
+
+    def _delete_bone(self) -> None:
+        """Delete the selected leaf bone from the skeleton."""
+        if not self.model or not self.model.skeleton:
+            return
+        selected = self.bone_tree.focus()
+        if not selected:
+            messagebox.showinfo("Delete Bone", "No bone selected.")
+            return
+        bone = self.model.skeleton.get_bone(selected)
+        if bone is None:
+            return
+        if bone.children:
+            messagebox.showwarning(
+                "Delete Bone",
+                f"Cannot delete '{selected}': it has child bones.\n"
+                "Delete all children first.",
+            )
+            return
+        confirmed = messagebox.askyesno(
+            "Delete Bone",
+            f"Permanently delete bone '{selected}' and its animation channels?",
+        )
+        if not confirmed:
+            return
+        # Remove animation channels for this bone from all clips
+        for clip in self.clips:
+            clip.remove_bone_channels(selected)
+        self.model.skeleton.remove_bone(selected)
+        self.model.skeleton.compute_bind_pose()
+        self._mark_dirty()
+        self._refresh_ui()
+        self.status_var.set(f"Bone '{selected}' deleted.")
+
+    def _on_bone_tree_right_click(self, event) -> None:
+        """Show context menu on right-click in the bone tree."""
+        item = self.bone_tree.identify_row(event.y)
+        if item:
+            self.bone_tree.selection_set(item)
+            self.bone_tree.focus(item)
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(label="Add Child Bone…", command=self._add_bone)
+        menu.add_command(label="Rename Bone…", command=self._rename_bone)
+        menu.add_separator()
+        menu.add_command(label="Delete Bone", command=self._delete_bone)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
 
     def _add_event(self) -> None:
         """Add a timeline event marker to the active clip."""
