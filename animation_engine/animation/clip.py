@@ -191,7 +191,8 @@ class AnimationClip:
         """Rename all channels that reference *old_bone_name* to *new_bone_name*.
 
         If a destination channel already exists for the same target, keyframes
-        are merged into that destination channel.
+        are merged into that destination channel. Duplicate timestamps are
+        resolved using AnimationChannel.add_keyframe() replacement semantics.
 
         Returns the number of channels updated.
         """
