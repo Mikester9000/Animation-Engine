@@ -108,3 +108,84 @@ def test_rename_clip_accepts_unique_name() -> None:
     assert not is_rename_collision("walk", other_names), "Unique name should not collide"
     clips[0].name = "walk"
     assert clips[0].name == "walk"
+
+
+# ---------------------------------------------------------------------------
+# Morph track management
+# ---------------------------------------------------------------------------
+
+from animation_engine.animation.morph_track import MorphTrack
+
+
+def _make_morph_tracks(*names: str) -> list:
+    return [MorphTrack(n) for n in names]
+
+
+def test_morph_track_add_and_evaluate() -> None:
+    mt = MorphTrack("brow_raise")
+    mt.add_keyframe(0.0, 0.0)
+    mt.add_keyframe(0.5, 1.0)
+    mt.add_keyframe(1.0, 0.0)
+    assert mt.evaluate(0.5) == 1.0
+    assert mt.evaluate(0.0) == 0.0
+    assert 0.0 < mt.evaluate(0.25) < 1.0
+
+
+def test_morph_track_name_uniqueness() -> None:
+    tracks = _make_morph_tracks("smile", "frown")
+    names = {mt.morph_name for mt in tracks}
+    assert "smile" in names and "frown" in names
+    assert len(names) == 2
+
+
+def test_morph_track_remove() -> None:
+    tracks = _make_morph_tracks("smile", "frown", "blink")
+    target = tracks[1]
+    tracks.remove(target)
+    assert all(mt.morph_name != "frown" for mt in tracks)
+    assert len(tracks) == 2
+
+
+def test_morph_track_serialization_roundtrip() -> None:
+    mt = MorphTrack("cheek_puff")
+    mt.add_keyframe(0.0, 0.2)
+    mt.add_keyframe(0.5, 0.9)
+    d = mt.to_dict()
+    restored = MorphTrack.from_dict(d)
+    assert restored.morph_name == mt.morph_name
+    assert len(restored.keyframes) == len(mt.keyframes)
+    assert abs(restored.evaluate(0.5) - 0.9) < 1e-6
+
+
+# ---------------------------------------------------------------------------
+# Clip settings (FPS / motion_type / loop)
+# ---------------------------------------------------------------------------
+
+
+def test_clip_fps_assignment() -> None:
+    clip = AnimationClip("run", fps=30.0)
+    clip.fps = 24.0
+    assert clip.fps == 24.0
+
+
+def test_clip_motion_type_attribute() -> None:
+    """motion_type is a dynamic attribute set by the editor."""
+    clip = AnimationClip("strafe_left")
+    clip.motion_type = "strafe_left"  # type: ignore[attr-defined]
+    assert getattr(clip, "motion_type", None) == "strafe_left"
+
+
+def test_clip_loop_toggle_via_settings() -> None:
+    clip = AnimationClip("idle", loop=True)
+    clip.loop = False
+    assert not clip.loop
+    clip.loop = True
+    assert clip.loop
+
+
+def test_clip_duration_reflects_keyframe_span() -> None:
+    from animation_engine.animation.channel import ChannelTarget
+    clip = AnimationClip("attack")
+    clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+    clip.add_keyframe("root", ChannelTarget.TRANSLATION, 1.5, [0, 1, 0])
+    assert abs(clip.duration - 1.5) < 1e-6
