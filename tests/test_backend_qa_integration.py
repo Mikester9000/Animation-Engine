@@ -667,7 +667,7 @@ def test_animator_root_motion_delta_is_per_frame_delta():
 _ALL_PROFILE_IDS = ["ff7_ps2", "ff8_ps2", "ff9_ps2", "ff10_ps2", "ff12_ps2"]
 
 
-def test_expanded_clip_taxonomy_has_43_motions():
+def test_expanded_clip_taxonomy_covers_minimum_motions():
     """Legacy minimum-coverage guard: every built-in profile requires at least 43 clip types."""
     for pid in _ALL_PROFILE_IDS:
         profile = get_style_profile(pid)

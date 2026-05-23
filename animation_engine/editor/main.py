@@ -34,7 +34,7 @@ from ..animation.morph_track import MorphTrack
 from ..io.anim_format import AnimExporter, AnimImporter
 from ..io.gltf import GltfExporter
 from ..math_utils import Matrix4x4, Vector3, Vector4, Quaternion, Transform
-from .state import PlaybackState, merge_recent_files, normalize_path, select_clip_name
+from .state import PlaybackState, is_rename_collision, merge_recent_files, normalize_path, select_clip_name, unique_duplicate_name
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -1031,10 +1031,13 @@ class AnimationEditor:
         if new_name == self.active_clip.name:
             return
         existing_names = [c.name for c in self.clips if c is not self.active_clip]
-        if new_name in existing_names:
+        if is_rename_collision(new_name, existing_names):
             messagebox.showwarning("Rename Clip", f"A clip named '{new_name}' already exists.")
             return
+        old_name = self.active_clip.name
         self.active_clip.name = new_name
+        if old_name in self._baseline_clip_snapshots:
+            self._baseline_clip_snapshots[new_name] = self._baseline_clip_snapshots.pop(old_name)
         self._mark_dirty()
         self._refresh_ui()
 
@@ -1045,11 +1048,7 @@ class AnimationEditor:
             return
         existing_names = {c.name for c in self.clips}
         base = self.active_clip.name
-        candidate = f"{base}_copy"
-        counter = 2
-        while candidate in existing_names:
-            candidate = f"{base}_copy{counter}"
-            counter += 1
+        candidate = unique_duplicate_name(base, existing_names)
         new_clip = AnimationClip.from_dict(deepcopy(self.active_clip.to_dict()))
         new_clip.name = candidate
         self.clips.append(new_clip)
@@ -1075,7 +1074,9 @@ class AnimationEditor:
         )
         if not confirmed:
             return
+        deleted_name = self.active_clip.name
         self.clips.remove(self.active_clip)
+        self._baseline_clip_snapshots.pop(deleted_name, None)
         self.active_clip = self.clips[0]
         self.loop_var.set(bool(self.active_clip.loop))
         self._mark_dirty()
@@ -1083,17 +1084,21 @@ class AnimationEditor:
 
     def _on_clip_list_right_click(self, event) -> None:
         """Show context menu on right-click in the clip browser."""
-        idx = self.clip_listbox.nearest(event.y)
-        if idx >= 0:
-            self.clip_listbox.selection_clear(0, tk.END)
-            self.clip_listbox.selection_set(idx)
-            self._on_clip_list_selected()
+        if self.clip_listbox.size() > 0:
+            idx = self.clip_listbox.nearest(event.y)
+            if 0 <= idx < self.clip_listbox.size():
+                self.clip_listbox.selection_clear(0, tk.END)
+                self.clip_listbox.selection_set(idx)
+                self._on_clip_list_selected()
         menu = tk.Menu(self.root, tearoff=0)
         menu.add_command(label="Rename…", command=self._rename_clip)
         menu.add_command(label="Duplicate", command=self._duplicate_clip)
         menu.add_separator()
         menu.add_command(label="Delete", command=self._delete_clip)
-        menu.tk_popup(event.x_root, event.y_root)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
 
     def _generate_from_profile(self) -> None:
         """Generate all required clips for a selected style profile using the procedural backend."""
@@ -1131,6 +1136,7 @@ class AnimationEditor:
         existing_names = {c.name for c in self.clips}
         added = 0
         skipped = 0
+        failed: list[str] = []
         for spec in profile.required_clips:
             if spec.motion_type in existing_names:
                 skipped += 1
@@ -1147,11 +1153,13 @@ class AnimationEditor:
                     "idle", "idle_alt", "idle_combat", "walk", "run", "sprint",
                     "crouch_walk", "guard_walk", "swim_idle", "swim_forward",
                     "ladder_up", "ladder_down", "climb_loop",
+                    "block", "cast_channel",
                 }
                 self.clips.append(clip)
                 existing_names.add(clip.name)
                 added += 1
             except Exception as exc:
+                failed.append(spec.motion_type)
                 self.status_var.set(f"Warning: failed generating '{spec.motion_type}': {exc}")
 
         if added > 0:
@@ -1162,6 +1170,8 @@ class AnimationEditor:
         msg = f"Generated {added} clip(s) from profile '{chosen}'."
         if skipped:
             msg += f" Skipped {skipped} already-existing clip(s)."
+        if failed:
+            msg += f" {len(failed)} clip(s) failed: {', '.join(failed)}."
         self.status_var.set(msg)
         messagebox.showinfo("Generate from Profile", msg)
 
