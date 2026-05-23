@@ -66,21 +66,33 @@ _BASE_REQUIRED_CLIPS: tuple[ClipSpec, ...] = (
     ClipSpec("run_start", 0.4, "run enter"),
     ClipSpec("run_stop", 0.5, "run exit"),
     ClipSpec("sprint", 1.2, "full-speed dash"),
+    ClipSpec("sprint_start", 0.35, "sprint enter burst"),
+    ClipSpec("sprint_stop", 0.45, "sprint decelerate and plant"),
+    ClipSpec("backstep", 0.5, "defensive retreat step"),
     ClipSpec("strafe_left", 0.9, "lateral walk left"),
     ClipSpec("strafe_right", 0.9, "lateral walk right"),
     ClipSpec("crouch", 0.6, "crouch transition"),
     ClipSpec("crouch_walk", 1.6, "crouch gait"),
+    ClipSpec("guard_walk", 1.8, "guarded locomotion while blocking"),
     ClipSpec("turn_left", 0.6, "pivot left"),
     ClipSpec("turn_right", 0.6, "pivot right"),
     # --- Traversal ---
     ClipSpec("jump_start", 0.4, "takeoff"),
     ClipSpec("jump_loop", 0.8, "airborne hold"),
     ClipSpec("jump_land", 0.5, "landing recovery"),
+    ClipSpec("land_hard", 0.6, "heavy landing from height"),
+    ClipSpec("land_roll", 0.7, "landing absorbed into evasive roll"),
     ClipSpec("roll", 0.6, "evasive roll"),
     ClipSpec("vault", 0.5, "obstacle vault"),
     ClipSpec("climb_start", 0.5, "climb initiate"),
     ClipSpec("climb_loop", 1.2, "climb cycle"),
     ClipSpec("climb_stop", 0.5, "dismount"),
+    ClipSpec("ladder_up", 1.0, "ascending ladder loop"),
+    ClipSpec("ladder_down", 1.0, "descending ladder loop"),
+    # --- Aquatic traversal ---
+    ClipSpec("swim_idle", 2.0, "treading water"),
+    ClipSpec("swim_forward", 1.4, "swimming stroke cycle"),
+    ClipSpec("swim_surface", 0.8, "surfacing from underwater"),
     # --- Combat / offense ---
     ClipSpec("attack", 1.2, "basic combat strike"),
     ClipSpec("attack_combo_1", 1.0, "combo chain step 1"),
@@ -100,13 +112,16 @@ _BASE_REQUIRED_CLIPS: tuple[ClipSpec, ...] = (
     ClipSpec("hit_react", 0.9, "damage reaction"),
     ClipSpec("stagger", 0.7, "hit stagger"),
     ClipSpec("knockdown", 1.0, "knockdown fall"),
+    ClipSpec("knockdown_air", 1.2, "aerial knockback fall"),
+    ClipSpec("block_break", 0.7, "guard shattered reaction"),
     ClipSpec("get_up", 0.9, "recover from knockdown"),
     ClipSpec("death", 1.8, "defeat animation"),
     # --- Interactions ---
     ClipSpec("interact", 0.8, "environment interaction"),
     ClipSpec("pickup", 0.7, "pick up item"),
-    # --- Celebration ---
+    # --- Celebration / emotes ---
     ClipSpec("victory", 2.5, "post-combat celebration"),
+    ClipSpec("emote_cheer", 2.0, "cheer gesture for cutscenes and dialogue"),
 )
 
 

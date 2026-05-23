@@ -149,7 +149,15 @@ class AnimationEditor:
         )
         edit_menu.add_separator()
         edit_menu.add_command(label="Add Clip", command=self._add_clip)
+        edit_menu.add_command(label="Rename Clip…", command=self._rename_clip)
+        edit_menu.add_command(label="Duplicate Clip", command=self._duplicate_clip)
+        edit_menu.add_command(label="Delete Clip", command=self._delete_clip)
+        edit_menu.add_separator()
         edit_menu.add_command(label="Add Bone", command=self._add_bone)
+        edit_menu.add_separator()
+        edit_menu.add_command(
+            label="Generate Clips from Profile…", command=self._generate_from_profile
+        )
         menubar.add_cascade(label="Edit", menu=edit_menu)
 
         # Playback menu
@@ -324,6 +332,8 @@ class AnimationEditor:
         )
         self.clip_listbox.pack(fill=tk.X, padx=4, pady=(0, 6))
         self.clip_listbox.bind("<<ListboxSelect>>", self._on_clip_list_selected)
+        self.clip_listbox.bind("<Button-3>", self._on_clip_list_right_click)
+        self.clip_listbox.bind("<Button-2>", self._on_clip_list_right_click)
 
     def _build_centre_panel(self, parent: tk.Frame) -> None:
         header = tk.Frame(parent, bg="#1a1a1a")
@@ -1003,6 +1013,158 @@ class AnimationEditor:
             self._mark_dirty()
             self._refresh_ui()
 
+    def _rename_clip(self) -> None:
+        """Prompt for a new name and rename the active clip."""
+        if not self.active_clip:
+            messagebox.showinfo("Rename Clip", "No active clip to rename.")
+            return
+        dialog = _SimpleDialog(
+            self.root,
+            title="Rename Clip",
+            prompt="New clip name:",
+            initial=self.active_clip.name,
+        )
+        new_name = dialog.result
+        if not new_name:
+            return
+        new_name = new_name.strip()
+        if new_name == self.active_clip.name:
+            return
+        existing_names = [c.name for c in self.clips if c is not self.active_clip]
+        if new_name in existing_names:
+            messagebox.showwarning("Rename Clip", f"A clip named '{new_name}' already exists.")
+            return
+        self.active_clip.name = new_name
+        self._mark_dirty()
+        self._refresh_ui()
+
+    def _duplicate_clip(self) -> None:
+        """Create a copy of the active clip with a unique name."""
+        if not self.active_clip:
+            messagebox.showinfo("Duplicate Clip", "No active clip to duplicate.")
+            return
+        existing_names = {c.name for c in self.clips}
+        base = self.active_clip.name
+        candidate = f"{base}_copy"
+        counter = 2
+        while candidate in existing_names:
+            candidate = f"{base}_copy{counter}"
+            counter += 1
+        new_clip = AnimationClip.from_dict(deepcopy(self.active_clip.to_dict()))
+        new_clip.name = candidate
+        self.clips.append(new_clip)
+        self.active_clip = new_clip
+        self.loop_var.set(bool(new_clip.loop))
+        self._mark_dirty()
+        self._refresh_ui()
+        self.status_var.set(f"Duplicated clip as '{candidate}'")
+
+    def _delete_clip(self) -> None:
+        """Remove the active clip from the document."""
+        if not self.active_clip:
+            messagebox.showinfo("Delete Clip", "No active clip to delete.")
+            return
+        if len(self.clips) <= 1:
+            messagebox.showwarning(
+                "Delete Clip", "Cannot delete the last clip. A document must have at least one clip."
+            )
+            return
+        confirmed = messagebox.askyesno(
+            "Delete Clip",
+            f"Permanently delete clip '{self.active_clip.name}'?",
+        )
+        if not confirmed:
+            return
+        self.clips.remove(self.active_clip)
+        self.active_clip = self.clips[0]
+        self.loop_var.set(bool(self.active_clip.loop))
+        self._mark_dirty()
+        self._refresh_ui()
+
+    def _on_clip_list_right_click(self, event) -> None:
+        """Show context menu on right-click in the clip browser."""
+        idx = self.clip_listbox.nearest(event.y)
+        if idx >= 0:
+            self.clip_listbox.selection_clear(0, tk.END)
+            self.clip_listbox.selection_set(idx)
+            self._on_clip_list_selected()
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(label="Rename…", command=self._rename_clip)
+        menu.add_command(label="Duplicate", command=self._duplicate_clip)
+        menu.add_separator()
+        menu.add_command(label="Delete", command=self._delete_clip)
+        menu.tk_popup(event.x_root, event.y_root)
+
+    def _generate_from_profile(self) -> None:
+        """Generate all required clips for a selected style profile using the procedural backend."""
+        from animation_engine.backend import BackendRegistry
+        from animation_engine.integration import get_style_profile, list_style_profiles
+
+        if not self.model or not self.model.skeleton:
+            messagebox.showwarning(
+                "Generate from Profile",
+                "A skeleton is required. Create or open a document with a skeleton first.",
+            )
+            return
+
+        profiles = list_style_profiles()
+        profile_ids = [p.profile_id for p in profiles]
+        if not profile_ids:
+            messagebox.showwarning("Generate from Profile", "No style profiles available.")
+            return
+
+        # Ask user to pick a profile
+        dlg = _ChoiceDialog(
+            self.root,
+            title="Generate Clips from Profile",
+            prompt="Select a style profile:",
+            choices=profile_ids,
+        )
+        chosen = dlg.result
+        if not chosen:
+            return
+
+        profile = get_style_profile(chosen)
+        backend = BackendRegistry.get("procedural")
+        skeleton = self.model.skeleton
+
+        existing_names = {c.name for c in self.clips}
+        added = 0
+        skipped = 0
+        for spec in profile.required_clips:
+            if spec.motion_type in existing_names:
+                skipped += 1
+                continue
+            try:
+                clip = backend.generate_clip(
+                    skeleton,
+                    spec.motion_type,
+                    spec.duration,
+                    cadence_scale=profile.cadence_scale,
+                    amplitude_scale=profile.amplitude_scale,
+                )
+                clip.loop = spec.motion_type.endswith("_loop") or spec.motion_type in {
+                    "idle", "idle_alt", "idle_combat", "walk", "run", "sprint",
+                    "crouch_walk", "guard_walk", "swim_idle", "swim_forward",
+                    "ladder_up", "ladder_down", "climb_loop",
+                }
+                self.clips.append(clip)
+                existing_names.add(clip.name)
+                added += 1
+            except Exception as exc:
+                self.status_var.set(f"Warning: failed generating '{spec.motion_type}': {exc}")
+
+        if added > 0:
+            self.active_clip = self.clips[-added]
+            self.loop_var.set(bool(self.active_clip.loop))
+            self._mark_dirty()
+            self._refresh_ui()
+        msg = f"Generated {added} clip(s) from profile '{chosen}'."
+        if skipped:
+            msg += f" Skipped {skipped} already-existing clip(s)."
+        self.status_var.set(msg)
+        messagebox.showinfo("Generate from Profile", msg)
+
     def _add_bone(self) -> None:
         """Prompt for a bone name and add it to the skeleton."""
         if not self.model:
@@ -1497,7 +1659,7 @@ class AnimationEditor:
 class _SimpleDialog(tk.Toplevel):
     """Minimal single-field text dialog."""
 
-    def __init__(self, parent, title: str, prompt: str) -> None:
+    def __init__(self, parent, title: str, prompt: str, initial: str = "") -> None:
         super().__init__(parent)
         self.title(title)
         self.resizable(False, False)
@@ -1507,6 +1669,9 @@ class _SimpleDialog(tk.Toplevel):
         tk.Label(self, text=prompt, padx=10, pady=6).pack()
         self._entry = tk.Entry(self, width=30)
         self._entry.pack(padx=10, pady=4)
+        if initial:
+            self._entry.insert(0, initial)
+            self._entry.select_range(0, tk.END)
         self._entry.focus_set()
 
         btn_frame = tk.Frame(self)
@@ -1520,6 +1685,36 @@ class _SimpleDialog(tk.Toplevel):
 
     def _ok(self) -> None:
         self.result = self._entry.get()
+        self.destroy()
+
+
+class _ChoiceDialog(tk.Toplevel):
+    """Dropdown selection dialog."""
+
+    def __init__(self, parent, title: str, prompt: str, choices: list[str]) -> None:
+        super().__init__(parent)
+        self.title(title)
+        self.resizable(False, False)
+        self.grab_set()
+        self.result: Optional[str] = None
+
+        tk.Label(self, text=prompt, padx=10, pady=6).pack()
+        self._var = tk.StringVar(value=choices[0] if choices else "")
+        combo = ttk.Combobox(self, textvariable=self._var, values=choices, state="readonly", width=28)
+        combo.pack(padx=10, pady=4)
+        combo.focus_set()
+
+        btn_frame = tk.Frame(self)
+        btn_frame.pack(pady=6)
+        tk.Button(btn_frame, text="OK", width=8, command=self._ok).pack(side=tk.LEFT, padx=4)
+        tk.Button(btn_frame, text="Cancel", width=8, command=self.destroy).pack(
+            side=tk.LEFT, padx=4
+        )
+        self.bind("<Return>", lambda _: self._ok())
+        self.wait_window()
+
+    def _ok(self) -> None:
+        self.result = self._var.get()
         self.destroy()
 
 

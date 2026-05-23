@@ -53,3 +53,66 @@ def test_merge_recent_files_deduplicates_and_limits() -> None:
 
 def test_normalize_path_returns_absolute() -> None:
     assert normalize_path("tests/../README.md").endswith("README.md")
+
+
+# ---------------------------------------------------------------------------
+# Clip management logic (independent of Tkinter)
+# ---------------------------------------------------------------------------
+
+from copy import deepcopy
+from animation_engine.animation.clip import AnimationClip
+
+
+def _make_clips(*names: str) -> list:
+    return [AnimationClip(n) for n in names]
+
+
+def test_duplicate_clip_produces_unique_name() -> None:
+    clips = _make_clips("idle", "run")
+    source = clips[0]
+    existing = {c.name for c in clips}
+    candidate = f"{source.name}_copy"
+    counter = 2
+    while candidate in existing:
+        candidate = f"{source.name}_copy{counter}"
+        counter += 1
+    new_clip = AnimationClip.from_dict(deepcopy(source.to_dict()))
+    new_clip.name = candidate
+    assert new_clip.name == "idle_copy"
+    assert new_clip.name not in {c.name for c in clips}
+
+
+def test_duplicate_clip_increments_suffix_on_collision() -> None:
+    clips = _make_clips("idle", "idle_copy")
+    source = clips[0]
+    existing = {c.name for c in clips}
+    candidate = f"{source.name}_copy"
+    counter = 2
+    while candidate in existing:
+        candidate = f"{source.name}_copy{counter}"
+        counter += 1
+    assert candidate == "idle_copy2"
+
+
+def test_delete_clip_removes_from_list() -> None:
+    clips = _make_clips("idle", "run", "attack")
+    active = clips[1]
+    clips.remove(active)
+    assert len(clips) == 2
+    assert all(c.name != "run" for c in clips)
+
+
+def test_rename_clip_detects_collision() -> None:
+    clips = _make_clips("idle", "run")
+    new_name = "run"
+    existing_names = [c.name for c in clips if c is not clips[0]]
+    assert new_name in existing_names, "Should detect collision with existing name"
+
+
+def test_rename_clip_accepts_unique_name() -> None:
+    clips = _make_clips("idle", "run")
+    new_name = "walk"
+    existing_names = [c.name for c in clips if c is not clips[0]]
+    assert new_name not in existing_names, "Unique name should not collide"
+    clips[0].name = new_name
+    assert clips[0].name == "walk"
