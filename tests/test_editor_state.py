@@ -194,3 +194,104 @@ def test_clip_duration_reflects_keyframe_span() -> None:
     clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
     clip.add_keyframe("root", ChannelTarget.TRANSLATION, 1.5, [0, 1, 0])
     assert abs(clip.duration - 1.5) < 1e-6
+
+
+# ---------------------------------------------------------------------------
+# Skeleton bone rename / delete (GUI completeness)
+# ---------------------------------------------------------------------------
+
+from animation_engine.model.skeleton import Skeleton
+from animation_engine.math_utils import Transform, Vector3
+
+
+def _make_skeleton() -> Skeleton:
+    skel = Skeleton("test_rig")
+    root = skel.add_bone("root", parent_index=-1)
+    spine = skel.add_bone("spine_01", parent_index=root)
+    skel.add_bone("spine_02", parent_index=spine)
+    skel.compute_bind_pose()
+    return skel
+
+
+def test_skeleton_rename_bone_updates_name_and_lookup() -> None:
+    skel = _make_skeleton()
+    assert skel.rename_bone("spine_01", "spine_a")
+    assert skel.get_bone("spine_a") is not None
+    assert skel.get_bone("spine_01") is None
+    assert skel.get_bone_index("spine_a") >= 0
+    assert skel.get_bone_index("spine_01") == -1
+
+
+def test_skeleton_rename_bone_rejects_collision() -> None:
+    skel = _make_skeleton()
+    assert not skel.rename_bone("spine_01", "root"), "Should reject rename to existing name"
+
+
+def test_skeleton_rename_bone_rejects_missing() -> None:
+    skel = _make_skeleton()
+    assert not skel.rename_bone("nonexistent", "new_name")
+
+
+def test_skeleton_remove_leaf_bone() -> None:
+    skel = _make_skeleton()
+    initial_count = skel.bone_count
+    assert skel.remove_bone("spine_02")
+    assert skel.bone_count == initial_count - 1
+    assert skel.get_bone("spine_02") is None
+
+
+def test_skeleton_remove_bone_with_children_is_rejected() -> None:
+    skel = _make_skeleton()
+    # spine_01 has a child (spine_02), so removal should fail
+    assert not skel.remove_bone("spine_01")
+    assert skel.get_bone("spine_01") is not None
+
+
+def test_skeleton_remove_bone_updates_parent_children_list() -> None:
+    skel = _make_skeleton()
+    spine01 = skel.get_bone("spine_01")
+    assert skel.get_bone_index("spine_02") in spine01.children
+    skel.remove_bone("spine_02")
+    # spine_01 should no longer list the removed bone as a child
+    assert all(
+        skel.bones[c].name != "spine_02"
+        for c in (skel.get_bone("spine_01").children if skel.get_bone("spine_01") else [])
+    )
+
+
+def test_skeleton_remove_bone_indices_stay_contiguous() -> None:
+    skel = _make_skeleton()
+    skel.remove_bone("spine_02")
+    for i, bone in enumerate(skel.bones):
+        assert bone.index == i, f"Bone index out of sync after remove: {bone}"
+
+
+def test_clip_rename_bone_channels() -> None:
+    from animation_engine.animation.channel import ChannelTarget
+    clip = AnimationClip("walk")
+    clip.add_keyframe("spine_01", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+    clip.add_keyframe("spine_01", ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+    updated = clip.rename_bone_channels("spine_01", "spine_a")
+    assert updated == 2
+    assert ("spine_a", ChannelTarget.TRANSLATION) in clip._channels
+    assert ("spine_a", ChannelTarget.ROTATION) in clip._channels
+    assert not any(k[0] == "spine_01" for k in clip._channels)
+
+
+def test_clip_remove_bone_channels() -> None:
+    from animation_engine.animation.channel import ChannelTarget
+    clip = AnimationClip("walk")
+    clip.add_keyframe("spine_01", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+    clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+    removed = clip.remove_bone_channels("spine_01")
+    assert removed == 1
+    assert not any(k[0] == "spine_01" for k in clip._channels)
+    assert any(k[0] == "root" for k in clip._channels)
+
+
+def test_clip_rename_bone_channels_no_op_when_bone_absent() -> None:
+    from animation_engine.animation.channel import ChannelTarget
+    clip = AnimationClip("idle")
+    clip.add_keyframe("root", ChannelTarget.TRANSLATION, 0.0, [0, 0, 0])
+    updated = clip.rename_bone_channels("nonexistent", "new_name")
+    assert updated == 0

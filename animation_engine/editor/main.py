@@ -172,6 +172,8 @@ class AnimationEditor:
         edit_menu.add_command(label="Delete Clip", command=self._delete_clip)
         edit_menu.add_separator()
         edit_menu.add_command(label="Add Bone", command=self._add_bone)
+        edit_menu.add_command(label="Rename Bone…", command=self._rename_bone)
+        edit_menu.add_command(label="Delete Bone", command=self._delete_bone)
         edit_menu.add_separator()
         edit_menu.add_command(
             label="Generate Clips from Profile…", command=self._generate_from_profile
@@ -338,6 +340,8 @@ class AnimationEditor:
         self.bone_tree = ttk.Treeview(parent, show="tree", selectmode="browse")
         self.bone_tree.pack(fill=tk.BOTH, expand=True, padx=4, pady=2)
         self.bone_tree.bind("<<TreeviewSelect>>", self._on_bone_selected)
+        self.bone_tree.bind("<Button-3>", self._on_bone_tree_right_click)
+        self.bone_tree.bind("<Button-2>", self._on_bone_tree_right_click)
 
         # Style the treeview dark
         style = ttk.Style()
@@ -1703,7 +1707,90 @@ class AnimationEditor:
             self._mark_dirty()
             self._refresh_ui()
 
-    def _add_event(self) -> None:
+    def _rename_bone(self) -> None:
+        """Prompt for a new name and rename the selected bone."""
+        if not self.model or not self.model.skeleton:
+            return
+        selected = self.bone_tree.focus()
+        if not selected:
+            messagebox.showinfo("Rename Bone", "No bone selected.")
+            return
+        dialog = _SimpleDialog(
+            self.root,
+            title="Rename Bone",
+            prompt="New bone name:",
+            initial=selected,
+        )
+        new_name = dialog.result
+        if not new_name:
+            return
+        new_name = new_name.strip()
+        if new_name == selected:
+            return
+        if not self.model.skeleton.rename_bone(selected, new_name):
+            messagebox.showwarning(
+                "Rename Bone",
+                f"Cannot rename '{selected}': name '{new_name}' is already taken or bone not found.",
+            )
+            return
+        # Update all animation channels in every clip that reference the old name
+        for clip in self.clips:
+            clip.rename_bone_channels(selected, new_name)
+        self.model.skeleton.compute_bind_pose()
+        self._mark_dirty()
+        self._refresh_ui()
+        self.status_var.set(f"Bone '{selected}' renamed to '{new_name}'.")
+
+    def _delete_bone(self) -> None:
+        """Delete the selected leaf bone from the skeleton."""
+        if not self.model or not self.model.skeleton:
+            return
+        selected = self.bone_tree.focus()
+        if not selected:
+            messagebox.showinfo("Delete Bone", "No bone selected.")
+            return
+        bone = self.model.skeleton.get_bone(selected)
+        if bone is None:
+            return
+        if bone.children:
+            messagebox.showwarning(
+                "Delete Bone",
+                f"Cannot delete '{selected}': it has child bones.\n"
+                "Delete all children first.",
+            )
+            return
+        confirmed = messagebox.askyesno(
+            "Delete Bone",
+            f"Permanently delete bone '{selected}' and its animation channels?",
+        )
+        if not confirmed:
+            return
+        # Remove animation channels for this bone from all clips
+        for clip in self.clips:
+            clip.remove_bone_channels(selected)
+        self.model.skeleton.remove_bone(selected)
+        self.model.skeleton.compute_bind_pose()
+        self._mark_dirty()
+        self._refresh_ui()
+        self.status_var.set(f"Bone '{selected}' deleted.")
+
+    def _on_bone_tree_right_click(self, event) -> None:
+        """Show context menu on right-click in the bone tree."""
+        item = self.bone_tree.identify_row(event.y)
+        if item:
+            self.bone_tree.selection_set(item)
+            self.bone_tree.focus(item)
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(label="Add Child Bone…", command=self._add_bone)
+        menu.add_command(label="Rename Bone…", command=self._rename_bone)
+        menu.add_separator()
+        menu.add_command(label="Delete Bone", command=self._delete_bone)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+
+
         """Add a timeline event marker to the active clip."""
         if not self.active_clip:
             messagebox.showinfo("Add Event", "No active clip selected.")

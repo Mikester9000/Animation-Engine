@@ -191,6 +191,68 @@ class Skeleton:
                 world[bone.index] = world[bone.parent_index] * local_mat
         return world
 
+    def rename_bone(self, old_name: str, new_name: str) -> bool:
+        """Rename a bone in-place.
+
+        Parameters
+        ----------
+        old_name : Current bone name.
+        new_name : Desired new name.
+
+        Returns
+        -------
+        True on success, False if *old_name* does not exist or *new_name* is
+        already taken.
+        """
+        if old_name not in self._name_to_index:
+            return False
+        if new_name in self._name_to_index:
+            return False
+        idx = self._name_to_index.pop(old_name)
+        self.bones[idx].name = new_name
+        self._name_to_index[new_name] = idx
+        return True
+
+    def remove_bone(self, name: str) -> bool:
+        """Remove a *leaf* bone (one with no children) from the skeleton.
+
+        Removing a bone with children is not permitted because it would orphan
+        the child hierarchy.  Callers should delete children first.
+
+        Parameters
+        ----------
+        name : Name of the bone to remove.
+
+        Returns
+        -------
+        True on success, False if the bone does not exist or has children.
+        """
+        if name not in self._name_to_index:
+            return False
+        idx = self._name_to_index[name]
+        bone = self.bones[idx]
+        if bone.children:
+            return False  # Cannot remove a bone that has children
+
+        # Remove from parent's children list
+        if bone.parent_index >= 0:
+            parent = self.bones[bone.parent_index]
+            parent.children = [c for c in parent.children if c != idx]
+
+        # Remove from bones list and rebuild indices
+        del self.bones[idx]
+        self._name_to_index = {}
+        for new_idx, b in enumerate(self.bones):
+            b.index = new_idx
+            self._name_to_index[b.name] = new_idx
+            # Shift parent_index references that were above the removed index
+            if b.parent_index > idx:
+                b.parent_index -= 1
+            # Rebuild children lists (shift indices)
+            b.children = [c - 1 if c > idx else c for c in b.children if c != idx]
+
+        return True
+
     @property
     def bone_count(self) -> int:
         return len(self.bones)

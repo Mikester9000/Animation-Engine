@@ -187,6 +187,30 @@ class AnimationClip:
 
     # -- serialisation -------------------------------------------------------
 
+    def rename_bone_channels(self, old_bone_name: str, new_bone_name: str) -> int:
+        """Rename all channels that reference *old_bone_name* to *new_bone_name*.
+
+        Returns the number of channels updated.
+        """
+        keys_to_rename = [
+            k for k in self._channels if k[0] == old_bone_name
+        ]
+        for key in keys_to_rename:
+            ch = self._channels.pop(key)
+            ch.bone_name = new_bone_name
+            self._channels[(new_bone_name, key[1])] = ch
+        return len(keys_to_rename)
+
+    def remove_bone_channels(self, bone_name: str) -> int:
+        """Remove all animation channels for *bone_name*.
+
+        Returns the number of channels removed.
+        """
+        keys_to_remove = [k for k in self._channels if k[0] == bone_name]
+        for key in keys_to_remove:
+            del self._channels[key]
+        return len(keys_to_remove)
+
     def to_dict(self) -> dict:
         d = {
             "name": self.name,
