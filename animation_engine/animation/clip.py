@@ -39,6 +39,7 @@ class AnimationClip:
         self.name: str = name
         self.fps: float = fps
         self.loop: bool = loop
+        self.motion_type: str = ""
         # Channels keyed by (bone_name, ChannelTarget)
         self._channels: Dict[Tuple[str, ChannelTarget], AnimationChannel] = {}
         # Event markers: list of {"name": str, "time": float, "data": dict}

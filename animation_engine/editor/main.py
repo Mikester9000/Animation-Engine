@@ -385,7 +385,7 @@ class AnimationEditor:
             tk.Label(row, text=label + ":", bg=BG_COLOR, fg=TEXT_COLOR, width=10, anchor="e").pack(
                 side=tk.LEFT
             )
-            state = tk.NORMAL if editable else "readonly"
+            state = tk.NORMAL if editable else tk.DISABLED
             entry = tk.Entry(
                 row, textvariable=var, bg="#333" if editable else "#252525",
                 fg=TEXT_COLOR, insertbackground=TEXT_COLOR, relief=tk.FLAT,
@@ -904,7 +904,7 @@ class AnimationEditor:
             messagebox.showwarning("Clip Settings", f"Invalid FPS: {exc}")
             return
         motion_type = self._clip_motion_var.get().strip()
-        self.active_clip.motion_type = motion_type  # type: ignore[attr-defined]
+        self.active_clip.motion_type = motion_type
         self.active_clip.loop = bool(self._clip_loop_left_var.get())
         self.loop_var.set(self.active_clip.loop)
         self._mark_dirty()
@@ -933,7 +933,7 @@ class AnimationEditor:
             return
         self.morph_listbox.delete(0, tk.END)
         for mt in self.morph_tracks:
-            kf_count = len(mt.keyframes) if hasattr(mt, "keyframes") else 0
+            kf_count = len(mt.keyframes)
             self.morph_listbox.insert(tk.END, f"{mt.morph_name}  ({kf_count} kf)")
 
     def _add_morph_track(self) -> None:
@@ -969,7 +969,12 @@ class AnimationEditor:
         except ValueError:
             messagebox.showwarning("Morph Keyframe", "Enter a numeric weight.")
             return
-        weight = max(0.0, min(1.0, weight))
+        raw_weight = float(dialog.result)
+        weight = max(0.0, min(1.0, raw_weight))
+        if weight != raw_weight:
+            messagebox.showinfo(
+                "Morph Keyframe", f"Weight clamped to {weight:.3f} (input {raw_weight:.3f})."
+            )
         mt.add_keyframe(self.playback.time_seconds, weight)
         self._refresh_morph_track_list()
         self._mark_dirty()
@@ -996,16 +1001,15 @@ class AnimationEditor:
     # -----------------------------------------------------------------------
 
     def _launch_pack_builder(self) -> None:
-        """Open the Production Pack Builder in a separate window."""
+        """Open the Production Pack Builder as a separate process."""
+        import subprocess
+        import sys
+
         try:
-            from animation_engine.gui.production_pack_gui import ProductionPackGUI
-            import threading
-
-            def _open_in_thread() -> None:
-                app = ProductionPackGUI()
-                app.run()
-
-            threading.Thread(target=_open_in_thread, daemon=True).start()
+            subprocess.Popen(
+                [sys.executable, "-m", "animation_engine.gui.production_pack_gui"],
+                close_fds=True,
+            )
         except Exception as exc:
             messagebox.showerror("Production Pack Builder", str(exc))
 

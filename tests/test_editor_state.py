@@ -169,10 +169,15 @@ def test_clip_fps_assignment() -> None:
 
 
 def test_clip_motion_type_attribute() -> None:
-    """motion_type is a dynamic attribute set by the editor."""
+    """motion_type is a formal attribute of AnimationClip."""
     clip = AnimationClip("strafe_left")
-    clip.motion_type = "strafe_left"  # type: ignore[attr-defined]
-    assert getattr(clip, "motion_type", None) == "strafe_left"
+    clip.motion_type = "strafe_left"
+    assert clip.motion_type == "strafe_left"
+
+
+def test_clip_motion_type_default_is_empty() -> None:
+    clip = AnimationClip("idle")
+    assert clip.motion_type == ""
 
 
 def test_clip_loop_toggle_via_settings() -> None:
