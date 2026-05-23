@@ -258,15 +258,18 @@ def retarget_clip(
     from .channel import AnimationChannel, ChannelTarget
     from .keyframe import Keyframe
 
-    def _bone_length(skel, name: str) -> float:
+    # Build a lookup dict once to avoid O(n) scan per channel.
+    def _build_bone_lookup(skel) -> dict:
+        if hasattr(skel, "get_bone"):
+            return {}  # get_bone handles lookup directly.
+        return {b.name: b for b in getattr(skel, "bones", [])}
+
+    src_lookup = _build_bone_lookup(source_skel)
+    tgt_lookup = _build_bone_lookup(target_skel)
+
+    def _bone_length(skel, lookup: dict, name: str) -> float:
         """Return the bind-pose distance from a bone to its parent (its 'length')."""
-        bone = skel.get_bone(name) if hasattr(skel, "get_bone") else None
-        if bone is None:
-            # Fall back: look up by iterating bones list.
-            for b in getattr(skel, "bones", []):
-                if b.name == name:
-                    bone = b
-                    break
+        bone = skel.get_bone(name) if hasattr(skel, "get_bone") else lookup.get(name)
         if bone is None:
             return 1.0
         pos = bone.local_transform.position
@@ -285,8 +288,8 @@ def retarget_clip(
 
         new_ch = AnimationChannel(mapped_name, target)
         if target == ChannelTarget.TRANSLATION:
-            src_len = _bone_length(source_skel, bone_name)
-            tgt_len = _bone_length(target_skel, mapped_name)
+            src_len = _bone_length(source_skel, src_lookup, bone_name)
+            tgt_len = _bone_length(target_skel, tgt_lookup, mapped_name)
             scale = tgt_len / src_len
             for kf in ch.keyframes:
                 scaled_value = [v * scale for v in kf.value]

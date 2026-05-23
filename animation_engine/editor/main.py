@@ -779,6 +779,7 @@ class AnimationEditor:
         self._redraw_viewport()
 
 
+    def _build_timeline(self, parent: tk.Frame) -> None:
         """Build the scrollable timeline strip."""
         tk.Label(
             parent, text="Timeline", bg="#1e1e1e", fg=ACCENT_COLOR, font=("Helvetica", 9, "bold")
@@ -1812,11 +1813,14 @@ class AnimationEditor:
                 # Simple 1-bone lookup for performance; use first bone_index.
                 bi = v.bone_indices[0] if v.bone_indices else 0
                 mat = world_mats[bi] if 0 <= bi < len(world_mats) else None
-                pos = mat.transform_point(v.position) if mat else v.position
+                if mat is None:
+                    cached_pts[vi] = None
+                    continue
+                pos = mat.transform_point(v.position)
                 cached_pts[vi] = self._project_world_point(pos, width, height)
             # Draw triangle edges (de-duplicate shared edges for speed).
             drawn_edges: set = set()
-            for i in range(0, len(mesh.indices) - 2, 3):
+            for i in range(0, len(mesh.indices), 3):
                 i0, i1, i2 = mesh.indices[i], mesh.indices[i + 1], mesh.indices[i + 2]
                 for a, b in ((i0, i1), (i1, i2), (i2, i0)):
                     edge = (min(a, b), max(a, b))
