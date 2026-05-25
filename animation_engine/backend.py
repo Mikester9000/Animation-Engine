@@ -170,11 +170,11 @@ class ProceduralBackend(AnimationBackend):
         def _find_bone_name(*candidates: str) -> str | None:
             if not skeleton or not getattr(skeleton, "bones", None):
                 return None
-            by_name = {bone.name: bone.name for bone in skeleton.bones}
+            by_name = {bone.name for bone in skeleton.bones}
+            by_name_lower = {bone.name.lower(): bone.name for bone in skeleton.bones}
             for name in candidates:
                 if name in by_name:
-                    return by_name[name]
-            by_name_lower = {bone.name.lower(): bone.name for bone in skeleton.bones}
+                    return name
             for name in candidates:
                 found = by_name_lower.get(name.lower())
                 if found is not None:

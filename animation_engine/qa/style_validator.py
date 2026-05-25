@@ -353,16 +353,17 @@ class StyleValidator:
     ) -> None:
         """Fail if any required category is under-represented in the clip set."""
         category_counts: dict[str, int] = {}
-        unknown_motions: list[str] = []
+        uncategorized_motions: list[str] = []
         for motion in actual_set:
             cat = CLIP_CATEGORY_MAP.get(motion, "unknown")
             category_counts[cat] = category_counts.get(cat, 0) + 1
             if cat == "unknown":
-                unknown_motions.append(motion)
+                uncategorized_motions.append(motion)
 
-        if unknown_motions:
+        if uncategorized_motions:
             errors.append(
-                "Unknown gameplay category for clips: " + ", ".join(sorted(unknown_motions))
+                "Unknown gameplay category for clips: "
+                + ", ".join(sorted(uncategorized_motions))
             )
 
         for cat, min_count in CATEGORY_MIN_COVERAGE.items():
