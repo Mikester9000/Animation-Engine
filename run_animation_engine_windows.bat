@@ -82,6 +82,11 @@ if errorlevel 1 (
 :: ── Install / update dependencies ─────────────────────────────────────────────
 echo [Animation-Engine] Updating pip...
 python -m pip install --upgrade pip --progress-bar off
+if errorlevel 1 (
+    echo [Animation-Engine] ERROR: Failed to update pip.
+    pause
+    exit /b 1
+)
 echo [Animation-Engine] Installing/updating dependencies...
 python -m pip install -e ".[dev]"
 if errorlevel 1 (
