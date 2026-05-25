@@ -57,7 +57,7 @@
           "local_transform": {
             "position": [
               0.0,
-              0.0,
+              0.8999999761581421,
               0.0
             ],
             "rotation": [
@@ -86,8 +86,90 @@
             1.0,
             0.0,
             0.0,
+            -0.8999999761581421,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "name": "hand_r",
+          "index": 2,
+          "parent_index": 1,
+          "local_transform": {
+            "position": [
+              0.2800000011920929,
+              0.3499999940395355,
+              0.05000000074505806
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "inverse_bind": [
+            1.0,
             0.0,
             0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            -0.2800000011920929,
+            -1.2499999701976776,
+            -0.05000000074505806,
+            1.0
+          ]
+        },
+        {
+          "name": "sword_r",
+          "index": 3,
+          "parent_index": 2,
+          "local_transform": {
+            "position": [
+              0.3400000035762787,
+              0.0,
+              0.0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "inverse_bind": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            -0.6200000047683716,
+            -1.2499999701976776,
+            -0.05000000074505806,
             1.0
           ]
         }
@@ -159,9 +241,11 @@
     "motion_type": "sprint_stop",
     "duration": 0.45,
     "sample_rate": 30.0,
-    "locomotion_category": "unknown",
-    "root_motion_policy": "none",
-    "interaction_tags": [],
-    "transition_intent": "oneshot"
+    "locomotion_category": "exploration",
+    "root_motion_policy": "xy_only",
+    "interaction_tags": [
+      "decelerate"
+    ],
+    "transition_intent": "locomotion_exit"
   }
 }

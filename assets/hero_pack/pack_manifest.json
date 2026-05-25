@@ -74,350 +74,350 @@
   "ordered_files": [
     {
       "motion_type": "idle",
-      "path": "idle.anim",
+      "path": "assets/hero_pack/idle.anim",
       "duration": 3.0
     },
     {
       "motion_type": "idle_alt",
-      "path": "idle_alt.anim",
+      "path": "assets/hero_pack/idle_alt.anim",
       "duration": 3.5
     },
     {
       "motion_type": "idle_combat",
-      "path": "idle_combat.anim",
+      "path": "assets/hero_pack/idle_combat.anim",
       "duration": 2.0
     },
     {
       "motion_type": "walk",
-      "path": "walk.anim",
+      "path": "assets/hero_pack/walk.anim",
       "duration": 2.0
     },
     {
       "motion_type": "run",
-      "path": "run.anim",
+      "path": "assets/hero_pack/run.anim",
       "duration": 1.5
     },
     {
       "motion_type": "run_start",
-      "path": "run_start.anim",
+      "path": "assets/hero_pack/run_start.anim",
       "duration": 0.4
     },
     {
       "motion_type": "run_stop",
-      "path": "run_stop.anim",
+      "path": "assets/hero_pack/run_stop.anim",
       "duration": 0.5
     },
     {
       "motion_type": "sprint",
-      "path": "sprint.anim",
+      "path": "assets/hero_pack/sprint.anim",
       "duration": 1.2
     },
     {
       "motion_type": "sprint_start",
-      "path": "sprint_start.anim",
+      "path": "assets/hero_pack/sprint_start.anim",
       "duration": 0.35
     },
     {
       "motion_type": "sprint_stop",
-      "path": "sprint_stop.anim",
+      "path": "assets/hero_pack/sprint_stop.anim",
       "duration": 0.45
     },
     {
       "motion_type": "backstep",
-      "path": "backstep.anim",
+      "path": "assets/hero_pack/backstep.anim",
       "duration": 0.5
     },
     {
       "motion_type": "strafe_left",
-      "path": "strafe_left.anim",
+      "path": "assets/hero_pack/strafe_left.anim",
       "duration": 0.9
     },
     {
       "motion_type": "strafe_right",
-      "path": "strafe_right.anim",
+      "path": "assets/hero_pack/strafe_right.anim",
       "duration": 0.9
     },
     {
       "motion_type": "crouch",
-      "path": "crouch.anim",
+      "path": "assets/hero_pack/crouch.anim",
       "duration": 0.6
     },
     {
       "motion_type": "crouch_walk",
-      "path": "crouch_walk.anim",
+      "path": "assets/hero_pack/crouch_walk.anim",
       "duration": 1.6
     },
     {
       "motion_type": "guard_walk",
-      "path": "guard_walk.anim",
+      "path": "assets/hero_pack/guard_walk.anim",
       "duration": 1.8
     },
     {
       "motion_type": "turn_left",
-      "path": "turn_left.anim",
+      "path": "assets/hero_pack/turn_left.anim",
       "duration": 0.6
     },
     {
       "motion_type": "turn_right",
-      "path": "turn_right.anim",
+      "path": "assets/hero_pack/turn_right.anim",
       "duration": 0.6
     },
     {
       "motion_type": "jump_start",
-      "path": "jump_start.anim",
+      "path": "assets/hero_pack/jump_start.anim",
       "duration": 0.4
     },
     {
       "motion_type": "jump_loop",
-      "path": "jump_loop.anim",
+      "path": "assets/hero_pack/jump_loop.anim",
       "duration": 0.8
     },
     {
       "motion_type": "jump_land",
-      "path": "jump_land.anim",
+      "path": "assets/hero_pack/jump_land.anim",
       "duration": 0.5
     },
     {
       "motion_type": "land_hard",
-      "path": "land_hard.anim",
+      "path": "assets/hero_pack/land_hard.anim",
       "duration": 0.6
     },
     {
       "motion_type": "land_roll",
-      "path": "land_roll.anim",
+      "path": "assets/hero_pack/land_roll.anim",
       "duration": 0.7
     },
     {
       "motion_type": "roll",
-      "path": "roll.anim",
+      "path": "assets/hero_pack/roll.anim",
       "duration": 0.6
     },
     {
       "motion_type": "vault",
-      "path": "vault.anim",
+      "path": "assets/hero_pack/vault.anim",
       "duration": 0.5
     },
     {
       "motion_type": "climb_start",
-      "path": "climb_start.anim",
+      "path": "assets/hero_pack/climb_start.anim",
       "duration": 0.5
     },
     {
       "motion_type": "climb_loop",
-      "path": "climb_loop.anim",
+      "path": "assets/hero_pack/climb_loop.anim",
       "duration": 1.2
     },
     {
       "motion_type": "climb_stop",
-      "path": "climb_stop.anim",
+      "path": "assets/hero_pack/climb_stop.anim",
       "duration": 0.5
     },
     {
       "motion_type": "ladder_up",
-      "path": "ladder_up.anim",
+      "path": "assets/hero_pack/ladder_up.anim",
       "duration": 1.0
     },
     {
       "motion_type": "ladder_down",
-      "path": "ladder_down.anim",
+      "path": "assets/hero_pack/ladder_down.anim",
       "duration": 1.0
     },
     {
       "motion_type": "swim_idle",
-      "path": "swim_idle.anim",
+      "path": "assets/hero_pack/swim_idle.anim",
       "duration": 2.0
     },
     {
       "motion_type": "swim_forward",
-      "path": "swim_forward.anim",
+      "path": "assets/hero_pack/swim_forward.anim",
       "duration": 1.4
     },
     {
       "motion_type": "swim_surface",
-      "path": "swim_surface.anim",
+      "path": "assets/hero_pack/swim_surface.anim",
       "duration": 0.8
     },
     {
       "motion_type": "attack",
-      "path": "attack.anim",
+      "path": "assets/hero_pack/attack.anim",
       "duration": 1.2
     },
     {
       "motion_type": "attack_combo_1",
-      "path": "attack_combo_1.anim",
+      "path": "assets/hero_pack/attack_combo_1.anim",
       "duration": 1.0
     },
     {
       "motion_type": "attack_combo_2",
-      "path": "attack_combo_2.anim",
+      "path": "assets/hero_pack/attack_combo_2.anim",
       "duration": 1.0
     },
     {
       "motion_type": "attack_combo_3",
-      "path": "attack_combo_3.anim",
+      "path": "assets/hero_pack/attack_combo_3.anim",
       "duration": 1.1
     },
     {
       "motion_type": "heavy_attack",
-      "path": "heavy_attack.anim",
+      "path": "assets/hero_pack/heavy_attack.anim",
       "duration": 1.4
     },
     {
       "motion_type": "aerial_attack",
-      "path": "aerial_attack.anim",
+      "path": "assets/hero_pack/aerial_attack.anim",
       "duration": 0.9
     },
     {
       "motion_type": "cast",
-      "path": "cast.anim",
+      "path": "assets/hero_pack/cast.anim",
       "duration": 1.4
     },
     {
       "motion_type": "cast_channel",
-      "path": "cast_channel.anim",
+      "path": "assets/hero_pack/cast_channel.anim",
       "duration": 1.2
     },
     {
       "motion_type": "cast_release",
-      "path": "cast_release.anim",
+      "path": "assets/hero_pack/cast_release.anim",
       "duration": 0.8
     },
     {
       "motion_type": "defend",
-      "path": "defend.anim",
+      "path": "assets/hero_pack/defend.anim",
       "duration": 1.1
     },
     {
       "motion_type": "block",
-      "path": "block.anim",
+      "path": "assets/hero_pack/block.anim",
       "duration": 1.0
     },
     {
       "motion_type": "parry",
-      "path": "parry.anim",
+      "path": "assets/hero_pack/parry.anim",
       "duration": 0.6
     },
     {
       "motion_type": "dodge",
-      "path": "dodge.anim",
+      "path": "assets/hero_pack/dodge.anim",
       "duration": 0.8
     },
     {
       "motion_type": "hit_react",
-      "path": "hit_react.anim",
+      "path": "assets/hero_pack/hit_react.anim",
       "duration": 0.9
     },
     {
       "motion_type": "stagger",
-      "path": "stagger.anim",
+      "path": "assets/hero_pack/stagger.anim",
       "duration": 0.7
     },
     {
       "motion_type": "knockdown",
-      "path": "knockdown.anim",
+      "path": "assets/hero_pack/knockdown.anim",
       "duration": 1.0
     },
     {
       "motion_type": "knockdown_air",
-      "path": "knockdown_air.anim",
+      "path": "assets/hero_pack/knockdown_air.anim",
       "duration": 1.2
     },
     {
       "motion_type": "block_break",
-      "path": "block_break.anim",
+      "path": "assets/hero_pack/block_break.anim",
       "duration": 0.7
     },
     {
       "motion_type": "get_up",
-      "path": "get_up.anim",
+      "path": "assets/hero_pack/get_up.anim",
       "duration": 0.9
     },
     {
       "motion_type": "death",
-      "path": "death.anim",
+      "path": "assets/hero_pack/death.anim",
       "duration": 1.8
     },
     {
       "motion_type": "interact",
-      "path": "interact.anim",
+      "path": "assets/hero_pack/interact.anim",
       "duration": 0.8
     },
     {
       "motion_type": "pickup",
-      "path": "pickup.anim",
+      "path": "assets/hero_pack/pickup.anim",
       "duration": 0.7
     },
     {
       "motion_type": "victory",
-      "path": "victory.anim",
+      "path": "assets/hero_pack/victory.anim",
       "duration": 2.5
     },
     {
       "motion_type": "emote_cheer",
-      "path": "emote_cheer.anim",
+      "path": "assets/hero_pack/emote_cheer.anim",
       "duration": 2.0
     }
   ],
   "expected": 57,
   "generated": 57,
   "files": {
-    "idle": "idle.anim",
-    "idle_alt": "idle_alt.anim",
-    "idle_combat": "idle_combat.anim",
-    "walk": "walk.anim",
-    "run": "run.anim",
-    "run_start": "run_start.anim",
-    "run_stop": "run_stop.anim",
-    "sprint": "sprint.anim",
-    "sprint_start": "sprint_start.anim",
-    "sprint_stop": "sprint_stop.anim",
-    "backstep": "backstep.anim",
-    "strafe_left": "strafe_left.anim",
-    "strafe_right": "strafe_right.anim",
-    "crouch": "crouch.anim",
-    "crouch_walk": "crouch_walk.anim",
-    "guard_walk": "guard_walk.anim",
-    "turn_left": "turn_left.anim",
-    "turn_right": "turn_right.anim",
-    "jump_start": "jump_start.anim",
-    "jump_loop": "jump_loop.anim",
-    "jump_land": "jump_land.anim",
-    "land_hard": "land_hard.anim",
-    "land_roll": "land_roll.anim",
-    "roll": "roll.anim",
-    "vault": "vault.anim",
-    "climb_start": "climb_start.anim",
-    "climb_loop": "climb_loop.anim",
-    "climb_stop": "climb_stop.anim",
-    "ladder_up": "ladder_up.anim",
-    "ladder_down": "ladder_down.anim",
-    "swim_idle": "swim_idle.anim",
-    "swim_forward": "swim_forward.anim",
-    "swim_surface": "swim_surface.anim",
-    "attack": "attack.anim",
-    "attack_combo_1": "attack_combo_1.anim",
-    "attack_combo_2": "attack_combo_2.anim",
-    "attack_combo_3": "attack_combo_3.anim",
-    "heavy_attack": "heavy_attack.anim",
-    "aerial_attack": "aerial_attack.anim",
-    "cast": "cast.anim",
-    "cast_channel": "cast_channel.anim",
-    "cast_release": "cast_release.anim",
-    "defend": "defend.anim",
-    "block": "block.anim",
-    "parry": "parry.anim",
-    "dodge": "dodge.anim",
-    "hit_react": "hit_react.anim",
-    "stagger": "stagger.anim",
-    "knockdown": "knockdown.anim",
-    "knockdown_air": "knockdown_air.anim",
-    "block_break": "block_break.anim",
-    "get_up": "get_up.anim",
-    "death": "death.anim",
-    "interact": "interact.anim",
-    "pickup": "pickup.anim",
-    "victory": "victory.anim",
-    "emote_cheer": "emote_cheer.anim"
+    "idle": "assets/hero_pack/idle.anim",
+    "idle_alt": "assets/hero_pack/idle_alt.anim",
+    "idle_combat": "assets/hero_pack/idle_combat.anim",
+    "walk": "assets/hero_pack/walk.anim",
+    "run": "assets/hero_pack/run.anim",
+    "run_start": "assets/hero_pack/run_start.anim",
+    "run_stop": "assets/hero_pack/run_stop.anim",
+    "sprint": "assets/hero_pack/sprint.anim",
+    "sprint_start": "assets/hero_pack/sprint_start.anim",
+    "sprint_stop": "assets/hero_pack/sprint_stop.anim",
+    "backstep": "assets/hero_pack/backstep.anim",
+    "strafe_left": "assets/hero_pack/strafe_left.anim",
+    "strafe_right": "assets/hero_pack/strafe_right.anim",
+    "crouch": "assets/hero_pack/crouch.anim",
+    "crouch_walk": "assets/hero_pack/crouch_walk.anim",
+    "guard_walk": "assets/hero_pack/guard_walk.anim",
+    "turn_left": "assets/hero_pack/turn_left.anim",
+    "turn_right": "assets/hero_pack/turn_right.anim",
+    "jump_start": "assets/hero_pack/jump_start.anim",
+    "jump_loop": "assets/hero_pack/jump_loop.anim",
+    "jump_land": "assets/hero_pack/jump_land.anim",
+    "land_hard": "assets/hero_pack/land_hard.anim",
+    "land_roll": "assets/hero_pack/land_roll.anim",
+    "roll": "assets/hero_pack/roll.anim",
+    "vault": "assets/hero_pack/vault.anim",
+    "climb_start": "assets/hero_pack/climb_start.anim",
+    "climb_loop": "assets/hero_pack/climb_loop.anim",
+    "climb_stop": "assets/hero_pack/climb_stop.anim",
+    "ladder_up": "assets/hero_pack/ladder_up.anim",
+    "ladder_down": "assets/hero_pack/ladder_down.anim",
+    "swim_idle": "assets/hero_pack/swim_idle.anim",
+    "swim_forward": "assets/hero_pack/swim_forward.anim",
+    "swim_surface": "assets/hero_pack/swim_surface.anim",
+    "attack": "assets/hero_pack/attack.anim",
+    "attack_combo_1": "assets/hero_pack/attack_combo_1.anim",
+    "attack_combo_2": "assets/hero_pack/attack_combo_2.anim",
+    "attack_combo_3": "assets/hero_pack/attack_combo_3.anim",
+    "heavy_attack": "assets/hero_pack/heavy_attack.anim",
+    "aerial_attack": "assets/hero_pack/aerial_attack.anim",
+    "cast": "assets/hero_pack/cast.anim",
+    "cast_channel": "assets/hero_pack/cast_channel.anim",
+    "cast_release": "assets/hero_pack/cast_release.anim",
+    "defend": "assets/hero_pack/defend.anim",
+    "block": "assets/hero_pack/block.anim",
+    "parry": "assets/hero_pack/parry.anim",
+    "dodge": "assets/hero_pack/dodge.anim",
+    "hit_react": "assets/hero_pack/hit_react.anim",
+    "stagger": "assets/hero_pack/stagger.anim",
+    "knockdown": "assets/hero_pack/knockdown.anim",
+    "knockdown_air": "assets/hero_pack/knockdown_air.anim",
+    "block_break": "assets/hero_pack/block_break.anim",
+    "get_up": "assets/hero_pack/get_up.anim",
+    "death": "assets/hero_pack/death.anim",
+    "interact": "assets/hero_pack/interact.anim",
+    "pickup": "assets/hero_pack/pickup.anim",
+    "victory": "assets/hero_pack/victory.anim",
+    "emote_cheer": "assets/hero_pack/emote_cheer.anim"
   },
   "failed": {},
   "backend_name": "procedural",
@@ -430,7 +430,8 @@
         "idle",
         "idle_alt",
         "idle_combat",
-        "victory"
+        "victory",
+        "emote_cheer"
       ],
       "exploration": [
         "walk",
@@ -438,38 +439,33 @@
         "run_start",
         "run_stop",
         "sprint",
+        "sprint_start",
+        "sprint_stop",
+        "backstep",
         "strafe_left",
         "strafe_right",
         "crouch",
         "crouch_walk",
+        "guard_walk",
         "turn_left",
         "turn_right"
-      ],
-      "unknown": [
-        "sprint_start",
-        "sprint_stop",
-        "backstep",
-        "guard_walk",
-        "land_hard",
-        "land_roll",
-        "ladder_up",
-        "ladder_down",
-        "swim_idle",
-        "swim_forward",
-        "swim_surface",
-        "knockdown_air",
-        "block_break",
-        "emote_cheer"
       ],
       "traversal": [
         "jump_start",
         "jump_loop",
         "jump_land",
+        "land_hard",
+        "land_roll",
         "roll",
         "vault",
         "climb_start",
         "climb_loop",
-        "climb_stop"
+        "climb_stop",
+        "ladder_up",
+        "ladder_down",
+        "swim_idle",
+        "swim_forward",
+        "swim_surface"
       ],
       "combat": [
         "attack",
@@ -490,6 +486,8 @@
         "hit_react",
         "stagger",
         "knockdown",
+        "knockdown_air",
+        "block_break",
         "get_up",
         "death"
       ],

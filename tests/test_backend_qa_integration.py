@@ -955,7 +955,7 @@ def test_weapon_bone_receives_attack_animation_keyframes():
     """Sword-capable rigs get explicit weapon rotation channels for attack clips."""
     backend = ProceduralBackend()
     skel = _make_sword_skeleton()
-    for motion in ("attack", "attack_combo_1", "attack_combo_2", "attack_combo_3", "heavy_attack"):
+    for motion in ("attack", "attack_combo_1", "attack_combo_2", "attack_combo_3", "heavy_attack", "aerial_attack"):
         clip = backend.generate_clip(skel, motion, 1.2)
         sword_channels = [
             c

@@ -227,12 +227,20 @@ class ProceduralBackend(AnimationBackend):
                     _unit_axis_quat(0.33 * a * swing_direction, axis="y"),
                 )
             if impact_hold:
-                clip.add_keyframe(
-                    weapon_name,
-                    ChannelTarget.ROTATION,
-                    duration * 0.55,
-                    _unit_axis_quat(0.30 * a * swing_direction, axis="y"),
-                )
+                if overhead:
+                    clip.add_keyframe(
+                        weapon_name,
+                        ChannelTarget.ROTATION,
+                        duration * 0.55,
+                        _unit_axis_quat(0.32 * a, axis="x"),
+                    )
+                else:
+                    clip.add_keyframe(
+                        weapon_name,
+                        ChannelTarget.ROTATION,
+                        duration * 0.55,
+                        _unit_axis_quat(0.30 * a * swing_direction, axis="y"),
+                    )
             clip.add_keyframe(weapon_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
 
             if hand_name is not None:
