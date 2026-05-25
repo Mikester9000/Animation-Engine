@@ -167,6 +167,98 @@ class ProceduralBackend(AnimationBackend):
                 return [0.0, 0.0, value, w]
             return [0.0, value, 0.0, w]
 
+        def _find_bone_name(*candidates: str) -> str | None:
+            if not skeleton or not getattr(skeleton, "bones", None):
+                return None
+            by_name = {bone.name for bone in skeleton.bones}
+            by_name_lower = {bone.name.lower(): bone.name for bone in skeleton.bones}
+            for name in candidates:
+                if name in by_name:
+                    return name
+            for name in candidates:
+                found = by_name_lower.get(name.lower())
+                if found is not None:
+                    return found
+            return None
+
+        def _apply_sword_attack_pose(
+            *,
+            swing_direction: float = 1.0,
+            overhead: bool = False,
+            impact_hold: bool = True,
+        ) -> None:
+            weapon_name = _find_bone_name(
+                "sword_r",
+                "weapon_r",
+                "blade_r",
+                "hand_weapon_r",
+                "sword",
+                "weapon",
+            )
+            if weapon_name is None:
+                return
+            hand_name = _find_bone_name("hand_r", "r_hand", "right_hand")
+            a = amplitude_scale
+            clip.add_keyframe(weapon_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+            if overhead:
+                clip.add_keyframe(
+                    weapon_name,
+                    ChannelTarget.ROTATION,
+                    duration * 0.2,
+                    _unit_axis_quat(-0.34 * a, axis="x"),
+                )
+                clip.add_keyframe(
+                    weapon_name,
+                    ChannelTarget.ROTATION,
+                    duration * 0.45,
+                    _unit_axis_quat(0.36 * a, axis="x"),
+                )
+            else:
+                clip.add_keyframe(
+                    weapon_name,
+                    ChannelTarget.ROTATION,
+                    duration * 0.2,
+                    _unit_axis_quat(-0.30 * a * swing_direction, axis="y"),
+                )
+                clip.add_keyframe(
+                    weapon_name,
+                    ChannelTarget.ROTATION,
+                    duration * 0.45,
+                    _unit_axis_quat(0.33 * a * swing_direction, axis="y"),
+                )
+            if impact_hold:
+                if overhead:
+                    clip.add_keyframe(
+                        weapon_name,
+                        ChannelTarget.ROTATION,
+                        duration * 0.55,
+                        _unit_axis_quat(0.32 * a, axis="x"),
+                    )
+                else:
+                    clip.add_keyframe(
+                        weapon_name,
+                        ChannelTarget.ROTATION,
+                        duration * 0.55,
+                        _unit_axis_quat(0.30 * a * swing_direction, axis="y"),
+                    )
+            clip.add_keyframe(weapon_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+
+            if hand_name is not None:
+                clip.add_keyframe(hand_name, ChannelTarget.ROTATION, 0.0, [0, 0, 0, 1])
+                clip.add_keyframe(
+                    hand_name,
+                    ChannelTarget.ROTATION,
+                    duration * 0.2,
+                    _unit_axis_quat(-0.12 * a * swing_direction, axis="y"),
+                )
+                clip.add_keyframe(
+                    hand_name,
+                    ChannelTarget.ROTATION,
+                    duration * 0.45,
+                    _unit_axis_quat(0.14 * a * swing_direction, axis="y"),
+                )
+                clip.add_keyframe(hand_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+
         clip = AnimationClip(motion_type, fps=self.sample_rate, loop=True)
         # Clamp to avoid divide-by-zero / near-zero step durations.
         cadence_scale = max(float(kwargs.get("cadence_scale", 1.0)), 1e-3)
@@ -256,6 +348,7 @@ class ProceduralBackend(AnimationBackend):
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.45, _unit_axis_quat(0.18 * a, axis="y"))  # uncoil
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.55, _unit_axis_quat(0.15 * a, axis="y"))  # held
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+                _apply_sword_attack_pose(swing_direction=1.0)
 
         elif motion_type == "defend":
             if skeleton and len(skeleton.bones) > 1:
@@ -595,6 +688,7 @@ class ProceduralBackend(AnimationBackend):
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.2, _unit_axis_quat(-0.12 * a, axis="y"))
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.45, _unit_axis_quat(0.14 * a, axis="y"))
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+                _apply_sword_attack_pose(swing_direction=1.0)
 
         elif motion_type == "attack_combo_2":
             # Combo step 2: right-to-left counter-swing continuation.
@@ -611,6 +705,7 @@ class ProceduralBackend(AnimationBackend):
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.2, _unit_axis_quat(0.12 * a, axis="y"))
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.45, _unit_axis_quat(-0.14 * a, axis="y"))
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+                _apply_sword_attack_pose(swing_direction=-1.0)
 
         elif motion_type == "attack_combo_3":
             # Finisher — overhead lunge with dramatic follow-through.
@@ -627,6 +722,7 @@ class ProceduralBackend(AnimationBackend):
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.15, _unit_axis_quat(-0.18 * a, axis="x"))
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.45, _unit_axis_quat(0.20 * a, axis="x"))
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+                _apply_sword_attack_pose(overhead=True)
 
         elif motion_type == "heavy_attack":
             # Slow powerful two-handed strike: coil → raise → slam → recovery.
@@ -644,6 +740,7 @@ class ProceduralBackend(AnimationBackend):
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.5, _unit_axis_quat(0.25 * a, axis="x"))   # slam
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration * 0.6, _unit_axis_quat(0.22 * a, axis="x"))   # held
                 clip.add_keyframe(spine_name, ChannelTarget.ROTATION, duration, [0, 0, 0, 1])
+                _apply_sword_attack_pose(overhead=True)
 
         elif motion_type == "aerial_attack":
             if skeleton and len(skeleton.bones) > 0:
@@ -666,6 +763,7 @@ class ProceduralBackend(AnimationBackend):
                     duration,
                     [0, 0.2 * amplitude_scale, 0],
                 )
+                _apply_sword_attack_pose(swing_direction=1.0, impact_hold=False)
 
         elif motion_type == "cast_channel":
             if skeleton and len(skeleton.bones) > 1:

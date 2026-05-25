@@ -26,20 +26,31 @@ CLIP_CATEGORY_MAP: dict[str, str] = {
     "run_start": "exploration",
     "run_stop": "exploration",
     "sprint": "exploration",
+    "sprint_start": "exploration",
+    "sprint_stop": "exploration",
+    "backstep": "exploration",
     "strafe_left": "exploration",
     "strafe_right": "exploration",
     "crouch": "exploration",
     "crouch_walk": "exploration",
+    "guard_walk": "exploration",
     "turn_left": "exploration",
     "turn_right": "exploration",
     "jump_start": "traversal",
     "jump_loop": "traversal",
     "jump_land": "traversal",
+    "land_hard": "traversal",
+    "land_roll": "traversal",
     "roll": "traversal",
     "vault": "traversal",
     "climb_start": "traversal",
     "climb_loop": "traversal",
     "climb_stop": "traversal",
+    "ladder_up": "traversal",
+    "ladder_down": "traversal",
+    "swim_idle": "traversal",
+    "swim_forward": "traversal",
+    "swim_surface": "traversal",
     "attack": "combat",
     "attack_combo_1": "combat",
     "attack_combo_2": "combat",
@@ -56,11 +67,14 @@ CLIP_CATEGORY_MAP: dict[str, str] = {
     "hit_react": "reaction",
     "stagger": "reaction",
     "knockdown": "reaction",
+    "knockdown_air": "reaction",
+    "block_break": "reaction",
     "get_up": "reaction",
     "death": "reaction",
     "interact": "interaction",
     "pickup": "interaction",
     "victory": "idle",
+    "emote_cheer": "idle",
 }
 
 #: Minimum number of clips required per category for a pack to be valid.
@@ -339,9 +353,18 @@ class StyleValidator:
     ) -> None:
         """Fail if any required category is under-represented in the clip set."""
         category_counts: dict[str, int] = {}
+        uncategorized_motions: list[str] = []
         for motion in actual_set:
             cat = CLIP_CATEGORY_MAP.get(motion, "unknown")
             category_counts[cat] = category_counts.get(cat, 0) + 1
+            if cat == "unknown":
+                uncategorized_motions.append(motion)
+
+        if uncategorized_motions:
+            errors.append(
+                "Unknown gameplay category for clips: "
+                + ", ".join(sorted(uncategorized_motions))
+            )
 
         for cat, min_count in CATEGORY_MIN_COVERAGE.items():
             present = category_counts.get(cat, 0)

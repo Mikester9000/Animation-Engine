@@ -57,7 +57,7 @@
           "local_transform": {
             "position": [
               0.0,
-              0.0,
+              0.8999999761581421,
               0.0
             ],
             "rotation": [
@@ -86,8 +86,90 @@
             1.0,
             0.0,
             0.0,
+            -0.8999999761581421,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "name": "hand_r",
+          "index": 2,
+          "parent_index": 1,
+          "local_transform": {
+            "position": [
+              0.2800000011920929,
+              0.3499999940395355,
+              0.05000000074505806
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "inverse_bind": [
+            1.0,
             0.0,
             0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            -0.2800000011920929,
+            -1.2499999701976776,
+            -0.05000000074505806,
+            1.0
+          ]
+        },
+        {
+          "name": "sword_r",
+          "index": 3,
+          "parent_index": 2,
+          "local_transform": {
+            "position": [
+              0.3400000035762787,
+              0.0,
+              0.0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "inverse_bind": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            -0.6200000047683716,
+            -1.2499999701976776,
+            -0.05000000074505806,
             1.0
           ]
         }
@@ -209,6 +291,126 @@
                 0.1575,
                 0.0,
                 0.9875189871592343
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 1.2,
+              "value": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            }
+          ]
+        },
+        {
+          "bone_name": "sword_r",
+          "target": "ROTATION",
+          "keyframes": [
+            {
+              "time": 0.0,
+              "value": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 0.24,
+              "value": [
+                0.0,
+                -0.315,
+                0.0,
+                0.9490916710202445
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 0.54,
+              "value": [
+                0.0,
+                0.34650000000000003,
+                0.0,
+                0.9380499720164166
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 0.66,
+              "value": [
+                0.0,
+                0.315,
+                0.0,
+                0.9490916710202445
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 1.2,
+              "value": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            }
+          ]
+        },
+        {
+          "bone_name": "hand_r",
+          "target": "ROTATION",
+          "keyframes": [
+            {
+              "time": 0.0,
+              "value": [
+                0,
+                0,
+                0,
+                1
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 0.24,
+              "value": [
+                0.0,
+                -0.126,
+                0.0,
+                0.9920302414745228
+              ],
+              "in_tangent": 0.0,
+              "out_tangent": 0.0,
+              "interp": "LINEAR"
+            },
+            {
+              "time": 0.54,
+              "value": [
+                0.0,
+                0.14700000000000002,
+                0.0,
+                0.9891364920980319
               ],
               "in_tangent": 0.0,
               "out_tangent": 0.0,
