@@ -920,3 +920,22 @@ def test_full_pipeline_generates_expanded_pack(tmp_path):
     generated = {e["motion_type"] for e in manifest["ordered_files"]}
     for mt in _NEW_MOTION_TYPES:
         assert mt in generated, f"Pipeline did not generate clip for '{mt}'"
+
+
+def test_semantic_category_maps_cover_full_profile_taxonomy():
+    """Pipeline and validator category maps cover every required clip in the profile."""
+    from animation_engine.integration.asset_pipeline import _CLIP_CATEGORY
+    from animation_engine.qa.style_validator import CLIP_CATEGORY_MAP
+
+    profile = get_style_profile("ff10_ps2")
+    required = {spec.motion_type for spec in profile.required_clips}
+    assert required <= set(_CLIP_CATEGORY), "asset_pipeline _CLIP_CATEGORY missing required clips"
+    assert required <= set(CLIP_CATEGORY_MAP), "StyleValidator CLIP_CATEGORY_MAP missing required clips"
+
+
+def test_pipeline_manifest_category_coverage_has_no_unknown_bucket(tmp_path):
+    """Generated manifest category coverage should not contain unknown motions."""
+    skel = _make_skeleton()
+    manifest = AnimationPipeline(profile_id="ff10_ps2").generate_all(tmp_path, skel)
+    coverage = manifest["gameplay_semantic"]["category_coverage"]
+    assert "unknown" not in coverage
