@@ -4,9 +4,21 @@ setlocal
 cd /d "%~dp0"
 echo [Animation-Engine] Working directory: %CD%
 
+set "PYTHON_EXE="
+set "PYTHON_ARGS="
 where py >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [Animation-Engine] ERROR: Python launcher 'py' was not found.
+if %errorlevel% equ 0 (
+    set "PYTHON_EXE=py"
+    set "PYTHON_ARGS=-3"
+) else (
+    where python >nul 2>&1
+    if %errorlevel% equ 0 (
+        set "PYTHON_EXE=python"
+    )
+)
+
+if "%PYTHON_EXE%"=="" (
+    echo [Animation-Engine] ERROR: Neither 'py' nor 'python' was found.
     echo Install Python 3.10+ from https://www.python.org/downloads/ and try again.
     pause
     exit /b 1
@@ -14,7 +26,11 @@ if %errorlevel% neq 0 (
 
 if not exist ".venv\Scripts\python.exe" (
     echo [Animation-Engine] Creating virtual environment...
-    py -3 -m venv .venv
+    if "%PYTHON_ARGS%"=="" (
+        "%PYTHON_EXE%" -m venv .venv
+    ) else (
+        "%PYTHON_EXE%" %PYTHON_ARGS% -m venv .venv
+    )
     if %errorlevel% neq 0 (
         echo [Animation-Engine] ERROR: Failed to create virtual environment.
         pause
