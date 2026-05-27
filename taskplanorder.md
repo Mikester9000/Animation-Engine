@@ -467,10 +467,188 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 
 ---
 
-## Output Contract for Mikester9000/GameRewritten Handoff
+## Phase J — Full GUI for Manual Audio Creation (Tasks 35–48)
+
+### Task 35
+- **Task Name:** Create audio package public API scaffold
+- **Narrative Logic:** Manual audio authoring should live in a stable package namespace just like animation, IO, QA, and editor systems. A dedicated package keeps future audio GUI tasks deterministic for low-reasoning local LLMs.
+- **Code Structure Need:** Create `animation_engine/audio/__init__.py` and re-export the project model, WAV IO helpers, synthesis helpers, and playback bridge from one stable import path.
+- **READ_DIRECTORY:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine`
+- **READ_LINES:** `DIRECTORY`
+- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/__init__.py`
+- **Lines Being Edited:** `1-80`
+- **Acceptance Criteria:** `from animation_engine.audio import ...` exposes the audio authoring API without requiring callers to import submodules directly.
+
+### Task 36
+- **Task Name:** Add audio project data model for manual authoring
+- **Narrative Logic:** A full manual audio GUI needs a deterministic in-memory project format before any widgets are built. Tracks, regions, envelopes, markers, and export settings must have a JSON-safe schema so work can be saved and resumed.
+- **Code Structure Need:** Create `animation_engine/audio/project.py` with dataclasses (or equivalent simple classes) for `AudioProject`, `AudioTrack`, `AudioRegion`, `EnvelopePoint`, `CueMarker`, and `ExportSettings`, plus `to_dict()` / `from_dict()` helpers.
+- **READ_DIRECTORY:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio`
+- **READ_LINES:** `DIRECTORY`
+- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/project.py`
+- **Lines Being Edited:** `1-260`
+- **Acceptance Criteria:** An empty project and a multi-track project both serialize to dict and restore without losing sample rate, region timing, markers, or envelope points.
+
+### Task 37
+- **Task Name:** Add WAV import/export helpers
+- **Narrative Logic:** Manual audio creation is not useful unless artists can import recorded source audio and export finished WAV files back out. The repo should stay standard-library friendly, so WAV handling should use deterministic PCM helpers.
+- **Code Structure Need:** Create `animation_engine/audio/wav_io.py` using the Python `wave` module to read/write 16-bit PCM mono/stereo data, normalize sample arrays, and preserve sample rate/channel count metadata.
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/project.py`
+- **READ_LINES:** `FULL_FILE`
+- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/wav_io.py`
+- **Lines Being Edited:** `1-220`
+- **Acceptance Criteria:** Importing a WAV into memory and exporting it again preserves frame count, channel count, and sample rate.
+
+### Task 38
+- **Task Name:** Add deterministic synthesis primitives for manual sound building
+- **Narrative Logic:** The GUI should support hand-made placeholder and production-support sounds even when no recorded asset exists yet. Deterministic synthesis primitives also make tests easier for weak local LLM workflows.
+- **Code Structure Need:** Create `animation_engine/audio/synthesis.py` with PCM generators for sine, square, triangle, and seeded noise; ADSR envelope shaping; gain/pan helpers; clip mixing; and offline render helpers that produce stable sample arrays from the project model.
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/project.py`
+- **READ_LINES:** `FULL_FILE`
+- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/synthesis.py`
+- **Lines Being Edited:** `1-320`
+- **Acceptance Criteria:** Re-rendering the same synthetic region with the same parameters produces byte-identical PCM sample output.
+
+### Task 39
+- **Task Name:** Add audio preview and playback bridge
+- **Narrative Logic:** Artists need to audition the sound they are building, but the repository should remain lightweight and dependency-free. A playback bridge can render temporary WAV output for preview while gracefully degrading on platforms with limited audio APIs.
+- **Code Structure Need:** Create `animation_engine/audio/playback.py` with helpers for offline preview mixdown, temporary WAV generation, optional Windows `winsound` playback, and a no-crash fallback path for non-Windows platforms.
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/wav_io.py`
+- **READ_LINES:** `FULL_FILE`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/synthesis.py`
+- **READ_LINES:** `FULL_FILE`
+- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/playback.py`
+- **Lines Being Edited:** `1-220`
+- **Acceptance Criteria:** Preview helper writes a temporary WAV for the requested time range and returns cleanly even on platforms where live playback is unavailable.
+
+### Task 40
+- **Task Name:** Create standalone audio authoring GUI shell
+- **Narrative Logic:** A full manual audio workflow needs its own window rather than overloading the production pack builder. Starting with a dedicated shell keeps the plan deterministic and lets later tasks fill in each panel one file at a time.
+- **Code Structure Need:** Create `animation_engine/gui/audio_editor_gui.py` with a Tkinter window, menu bar, toolbar, transport controls, track list, waveform canvas, inspector panel, log/status bar, and empty project bootstrap using the audio project model.
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/production_pack_gui.py`
+- **READ_LINES:** `1-260`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
+- **READ_LINES:** `143-260`
+- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
+- **Lines Being Edited:** `1-260`
+- **Acceptance Criteria:** Running the module opens a blank audio project window with visible track list, timeline canvas, transport buttons, and status text.
+
+### Task 41
+- **Task Name:** Add waveform timeline and region block editing
+- **Narrative Logic:** Manual audio creation requires visible regions on a time axis, not just project metadata in forms. Region blocks must be easy to add, move, resize, duplicate, and select on the main timeline.
+- **Code Structure Need:** In `audio_editor_gui.py`, add a zoomable timeline grid, waveform preview lane, track rows, and mouse handlers for region creation, dragging, resizing, duplication, and deletion with project-state redraws after every edit.
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
+- **READ_LINES:** `1-260`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/project.py`
+- **READ_LINES:** `FULL_FILE`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `120-360`
+- **Acceptance Criteria:** User can create a region on a track, drag it to a new start time, resize its duration, and see both the waveform box and project state update immediately.
+
+### Task 42
+- **Task Name:** Add envelope, gain, pan, and synthesis inspector controls
+- **Narrative Logic:** A GUI is not “full” for manual audio creation unless users can shape the sound directly inside the app. Region selection should expose deterministic controls for amplitude envelopes and generator settings without touching code.
+- **Code Structure Need:** In `audio_editor_gui.py`, add inspector widgets for generator type, oscillator frequency, ADSR values, gain, pan, fade-in/fade-out, loop toggle, and region color/label, and wire them to the selected region.
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
+- **READ_LINES:** `120-360`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/synthesis.py`
+- **READ_LINES:** `FULL_FILE`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `260-460`
+- **Acceptance Criteria:** Changing an inspector value updates the selected region and the next preview render uses the new envelope or synthesis settings.
+
+### Task 43
+- **Task Name:** Add cue-marker lane and animation-event alignment tools
+- **Narrative Logic:** Manual audio should line up with gameplay and animation timing, especially for footsteps, hit sparks, cast releases, and cinematic beats. A marker lane tied to `.anim` events keeps the audio GUI relevant to GameRewritten integration instead of becoming a disconnected mini-tool.
+- **Code Structure Need:** In `audio_editor_gui.py`, add a cue-marker lane, marker list panel, snap-to-frame toggle, and an `Import Anim Events…` action that loads clip events from `.anim` files and converts them into named cue markers at matching times.
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
+- **READ_LINES:** `260-460`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/animation/clip.py`
+- **READ_LINES:** `20-86`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `360-560`
+- **Acceptance Criteria:** Importing an `.anim` file with events produces visible markers on the audio timeline, and marker names/times are preserved when saved.
+
+### Task 44
+- **Task Name:** Add project save/load and final mixdown export actions
+- **Narrative Logic:** A manual audio GUI must persist work and export finished deliverables. Saving only the UI state is not enough; the tool needs reproducible project files plus final WAV mixdowns and optional stems.
+- **Code Structure Need:** In `audio_editor_gui.py`, add `New/Open/Save/Save As` for a JSON project format (for example `.aeaudio.json`), `Export Mixdown…`, `Export Stems…`, and transport preview hooks that render audio through the synthesis/playback bridge.
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
+- **READ_LINES:** `360-560`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/playback.py`
+- **READ_LINES:** `FULL_FILE`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `1-700`
+- **Acceptance Criteria:** Saving and reopening a project restores all tracks/regions/markers, and exporting creates a final mix WAV plus optional per-track stem WAV files.
+
+### Task 45
+- **Task Name:** Add CLI subcommand to launch the audio authoring GUI
+- **Narrative Logic:** The new GUI must be reachable through the same `animation-engine` command surface as the editor and production pack builder. This keeps workflows deterministic and scriptable.
+- **Code Structure Need:** In `animation_engine/cli.py`, add `_cmd_launch_audio_gui(args)` and register a `launch-audio-gui` subcommand beside `launch-production-gui`.
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/cli.py`
+- **READ_LINES:** `408-610`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
+- **READ_LINES:** `FULL_FILE`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** Add launch helper near `388-407`; add parser registration near `588-595`
+- **Acceptance Criteria:** `animation-engine launch-audio-gui` opens the audio authoring window and exits with code 0 when the window closes normally.
+
+### Task 46
+- **Task Name:** Add editor menu hook for opening audio authoring GUI
+- **Narrative Logic:** Animators already work inside the main editor, so the audio GUI should be one click away from the existing Tools menu. This makes manual audio creation part of the normal content-authoring workflow.
+- **Code Structure Need:** In `animation_engine/editor/main.py`, add `Open Audio Authoring GUI…` to the Tools menu and implement a `_launch_audio_builder()` helper that spawns `animation_engine.gui.audio_editor_gui` the same way `_launch_pack_builder()` works.
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
+- **READ_LINES:** `192-202, 1007-1019`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `193-202, 1007-1020`
+- **Acceptance Criteria:** Clicking Tools → Open Audio Authoring GUI… launches the audio window without closing or dirtying the current animation document.
+
+### Task 47
+- **Task Name:** Document the manual audio GUI workflow in README
+- **Narrative Logic:** Small local LLMs and human contributors both need a single copy-ready workflow for launching the GUI, creating sounds, aligning markers, and exporting deliverables. Without documentation, the feature will be hard to use correctly.
+- **Code Structure Need:** Update the README with a `Manual Audio GUI` section covering launch commands, project file format, supported authoring actions, `.anim` event import, mixdown/stem export, and a short example workflow.
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/README.md`
+- **READ_LINES:** `148-151, 227-257`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `227-310`
+- **Acceptance Criteria:** README includes exact commands for `animation-engine launch-audio-gui` and explains how to save a project, import animation events, preview audio, and export WAV output.
+
+### Task 48
+- **Task Name:** Add audio project, synthesis, and WAV IO tests
+- **Narrative Logic:** Manual audio creation introduces new state-heavy code that weak local LLMs could easily regress. Focused unit tests lock in the project schema, deterministic synthesis, and WAV import/export behavior.
+- **Code Structure Need:** Create `tests/test_audio.py` with tests for project serialization round-trip, deterministic synth render, WAV import/export round-trip, and cue-marker persistence from saved project files.
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/tests/test_editor_state.py`
+- **READ_LINES:** `1-80`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/project.py`
+- **READ_LINES:** `FULL_FILE`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/synthesis.py`
+- **READ_LINES:** `FULL_FILE`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/wav_io.py`
+- **READ_LINES:** `FULL_FILE`
+- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/tests/test_audio.py`
+- **Lines Being Edited:** `1-240`
+- **Acceptance Criteria:** `python -m pytest tests/test_audio.py -q` passes and proves audio project saves, synth renders, and WAV round-trips are deterministic.
+
+---
+
+## Phase J Required Validation Gates (Tasks 35–48)
+
+1. `python -m pytest -q` — all repository tests pass, including the new audio coverage.
+2. `python -m pytest tests/test_audio.py -q` — audio project, synthesis, and WAV IO tests all pass.
+3. `animation-engine launch-audio-gui` — opens a blank audio project window with track list, timeline, inspector, and transport controls and closes without traceback.
+4. In the audio GUI, create at least two tracks (one imported WAV region and one synthesized region), export a mixdown WAV, and confirm the output file exists with the expected sample rate and non-zero duration.
+5. Import an `.anim` file with timeline events into the cue-marker lane, save the audio project, reload it, and confirm cue marker names/times are preserved.
+6. From the main editor Tools menu, launch the audio authoring GUI and confirm the current animation document remains open and unmodified.
+
+---
+
+## Output Contract for Mikester9000/GameRewritten Handoff (Animation + Audio)
 
 At completion, export package must include:
 - Complete ordered `.anim` clip set per selected profile.
 - Pack manifest JSON with profile ID, PS2-era visual target, modern gameplay target, reference titles, clip inventory, and metadata.
 - Validation status report (pass/fail with reasons).
+- Saved audio authoring project file (for example `.aeaudio.json`) containing tracks, regions, cue markers, export settings, and animation-event alignment data.
+- Exported audio deliverables: final mixdown `.wav` plus optional per-track stem `.wav` files for manual polish in downstream tools.
+- Cue-marker mapping between audio events and animation/gameplay events so `Mikester9000/GameRewritten` can keep sound timing aligned with clip playback.
 - Updated compatibility documentation for import in `Mikester9000/GameRewritten` repo.
