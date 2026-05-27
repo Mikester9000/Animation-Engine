@@ -473,7 +473,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Expand editor state helpers for timeline view and history
 - **Narrative Logic:** The current editor state helpers cover playback and recent files, but a full animation GUI also needs deterministic state for timeline zoom, visible range, selection IDs, bookmarks, and undo snapshots. Keeping those rules in a pure helper module reduces Tkinter-only logic and stays friendly to weak local LLM workflows.
 - **Code Structure Need:** Extend `animation_engine/editor/state.py` with dataclasses and helpers for timeline view state, playback in/out range, selected keyframe IDs, bookmark storage, and labeled undo/redo snapshot stacks.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/state.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/state.py`
 - **READ_LINES:** `1-80`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `1-220`
@@ -483,7 +483,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Add timeline zoom, pan, and transport range controls
 - **Narrative Logic:** A full animation GUI must let animators focus on a small timing window instead of always viewing a fixed 10-second strip. Dedicated controls for zoom, pan, and transport range are foundational before direct keyframe manipulation becomes usable.
 - **Code Structure Need:** In `animation_engine/editor/main.py`, add toolbar and timeline controls backed by the new state helpers so the timeline can zoom, pan, and display only the active range while keeping playhead, scrubber, and ruler in sync.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
 - **READ_LINES:** `275-330, 1046-1090, 1378-1435`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `275-330, 1046-1194, 1378-1435`
@@ -493,7 +493,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Add direct keyframe selection, marquee, and drag editing
 - **Narrative Logic:** The editor is not “full” while keyframes are only passive diamonds. Artists need direct mouse-driven keyframe selection, marquee selection, and drag retiming so the timeline behaves like an actual animation tool instead of a playback monitor.
 - **Code Structure Need:** In `animation_engine/editor/main.py`, add timeline hit-testing, selected-keyframe highlighting, box selection, drag-to-retime, and redraw logic for one or many keyframes across visible rows.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
 - **READ_LINES:** `1046-1194, 1868-1890`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `1094-1194, 1868-1935`
@@ -503,7 +503,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Add duplicate, copy/paste, delete, and nudge for selected keys
 - **Narrative Logic:** After keyframes become selectable, the next productivity gap is repetitive timing cleanup. Full animation GUI workflows need deterministic copy/paste, duplicate, delete, and frame nudge actions so loops, anticipation holds, and impact offsets can be authored quickly.
 - **Code Structure Need:** In `animation_engine/editor/main.py`, add keyboard shortcuts and edit-menu actions for selected timeline keys, including clipboard serialization, duplicate-in-place, delete, and frame-accurate left/right nudging.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
 - **READ_LINES:** `143-181, 1439-1515, 1868-1935`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `163-181, 1439-1515, 1868-1985`
@@ -513,7 +513,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Upgrade event editing to full timeline and inspector workflows
 - **Narrative Logic:** Event markers already exist, but a full animation GUI needs event authoring to feel equal to transform key authoring. Direct marker selection, drag retiming, rename, and payload editing are required for gameplay synchronization workflows like footsteps, hit windows, and cast release timing.
 - **Code Structure Need:** In `animation_engine/editor/main.py`, expand the event panel into a richer inspector with editable payload text, selection sync with the timeline, marker dragging, and context actions for rename/duplicate/delete.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
 - **READ_LINES:** `580-643, 1170-1194, 1793-1838`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `580-643, 1170-1194, 1793-1867`
@@ -523,7 +523,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Add contact marker schema to animation clips
 - **Narrative Logic:** Contact markers are the missing data contract between the current editor and a production-ready animation GUI. Foot plants, hand plants, weapon contact, and landing windows should live beside events in the clip itself so they round-trip through save/load and can drive later GUI overlays.
 - **Code Structure Need:** Extend `animation_engine/animation/clip.py` with contact-marker add/remove/query helpers plus `to_dict()` / `from_dict()` support for named markers containing time, channel, side, and optional metadata.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/animation/clip.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/animation/clip.py`
 - **READ_LINES:** `33-87, 228-254`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `33-120, 228-254`
@@ -533,7 +533,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Add contact marker lane, inspector, and viewport overlays
 - **Narrative Logic:** Contact data is not useful unless animators can see and edit it directly. A dedicated lane and viewport overlay make it clear when feet, hands, or props should stick, which is essential for PS2-era readable motion polish.
 - **Code Structure Need:** In `animation_engine/editor/main.py`, add a contact-marker lane below the ruler, a contact inspector beside the event tools, and viewport overlays that highlight active contacts at the current playhead.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
 - **READ_LINES:** `580-648, 1094-1194, 2051-2397`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `580-648, 1094-1194, 2087-2397`
@@ -543,7 +543,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Add viewport bone picking and selected-bone highlighting
 - **Narrative Logic:** A full animation GUI should let artists choose bones from the viewport, not only from the tree view. Bone picking, selection highlighting, and clear active-bone feedback make pose blocking much faster during combat and cinematic authoring.
 - **Code Structure Need:** In `animation_engine/editor/main.py`, add projected-bone hit-testing, selected-bone outlines, status text updates, and selection sync between the viewport, bone tree, properties panel, and timeline rows.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
 - **READ_LINES:** `331-341, 437-497, 1856-2397`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `331-341, 437-497, 1856-2397`
@@ -553,7 +553,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Add pose mirror, reset, and selection-aware pose tools
 - **Narrative Logic:** Full manual animation work involves repeated left/right pose transfer and recovery from bad experimental edits. Mirror-pose and reset helpers speed up blocking of symmetrical combat, locomotion, and idle motions while reducing accidental destructive edits.
 - **Code Structure Need:** In `animation_engine/editor/main.py`, add Tools or Edit actions for mirroring selected-bone transforms, resetting selected channels to bind/default pose, and applying those operations at the current playhead or selected keyframe set.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
 - **READ_LINES:** `143-202, 1439-1776`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `163-202, 1439-1776`
@@ -563,7 +563,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Add clip bookmarks plus in/out playback preview range
 - **Narrative Logic:** A full animation GUI must support quick iteration on a subsection of a clip rather than replaying the full clip every time. Bookmarks and in/out preview ranges let animators loop only the anticipation, impact, recovery, or contact window they are currently polishing.
 - **Code Structure Need:** In `animation_engine/editor/main.py`, add bookmark commands, in/out markers on the timeline, playback clamping to preview range, and UI affordances for clearing or jumping between bookmarks.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
 - **READ_LINES:** `275-330, 1094-1194, 1378-1435`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `275-330, 1094-1194, 1378-1435`
@@ -573,7 +573,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Add undo/redo history helpers with labeled snapshot coalescing
 - **Narrative Logic:** Direct manipulation features become risky without deterministic rollback. Undo/redo should be driven by pure state helpers so future editor additions can reuse the same rules without duplicating Tkinter-specific history logic.
 - **Code Structure Need:** Extend `animation_engine/editor/state.py` with undo/redo stack helpers, labeled snapshots, stack limits, and small-change coalescing rules for repeated drags or nudges.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/state.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/state.py`
 - **READ_LINES:** `1-220`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `1-260`
@@ -583,7 +583,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Wire undo/redo, autosave recovery, and session restore into editor
 - **Narrative Logic:** Once history helpers exist, the GUI should use them everywhere that matters. Autosave and crash recovery keep long authoring sessions safe, and session restore makes the editor feel complete enough for daily production use.
 - **Code Structure Need:** In `animation_engine/editor/main.py`, integrate snapshot creation into key editing, event/contact editing, and pose tools; add autosave/recovery prompts; and restore timeline/bookmark/session state on reopen when recovery data exists.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
 - **READ_LINES:** `1199-1358, 1439-1985, 2087-2397`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `1199-1358, 1439-1985, 2087-2397`
@@ -593,7 +593,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Document the full animation GUI workflow in README
 - **Narrative Logic:** Small local LLMs and human contributors both need a single copy-ready workflow for the completed animation GUI. The README should explain timeline editing, event/contact authoring, viewport posing, preview ranges, and recovery behavior so the editor can be used without guesswork.
 - **Code Structure Need:** Update the README with a `Full Animation GUI Workflow` section covering launch commands, major panels, key editing actions, event/contact markers, viewport pose tools, undo/redo, autosave recovery, and a short production-authoring checklist.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/README.md`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/README.md`
 - **READ_LINES:** `148-167, 200-255`
 - **File Edited or Created:** Edit existing file
 - **Lines Being Edited:** `148-167, 227-310`
@@ -603,13 +603,13 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **Task Name:** Add animation GUI workflow regression tests
 - **Narrative Logic:** Full GUI completion adds dense editing logic that weak local LLMs could easily regress. Focused non-Tkinter regression tests should lock in timeline state, history behavior, bookmark handling, and clip contact-marker round trips.
 - **Code Structure Need:** Create `tests/test_editor_gui_workflows.py` with tests for state-helper clamping, undo/redo stack behavior, bookmark persistence, and `AnimationClip` contact-marker serialization.
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/tests/test_editor_state.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/tests/test_editor_state.py`
 - **READ_LINES:** `1-280`
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/state.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/state.py`
 - **READ_LINES:** `FULL_FILE`
-- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/animation/clip.py`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/animation/clip.py`
 - **READ_LINES:** `33-120, 228-254`
-- **File Edited or Created:** Create new file `/tmp/workspace/Mikester9000/Animation-Engine/tests/test_editor_gui_workflows.py`
+- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/tests/test_editor_gui_workflows.py`
 - **Lines Being Edited:** `1-260`
 - **Acceptance Criteria:** `python -m pytest tests/test_editor_gui_workflows.py -q` passes and proves the new GUI state contracts are deterministic.
 
@@ -626,7 +626,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 
 ---
 
-## Output Contract for Mikester9000/GameRewritten Handoff (Animation GUI)
+## Output Contract for Mikester9000/GameRewritten Handoff
 
 At completion of Phase J, export package must include:
 - Complete ordered `.anim` clip set per selected profile.
