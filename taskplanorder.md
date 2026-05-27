@@ -471,7 +471,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 
 ### Task 35
 - **Task Name:** Create audio package public API scaffold
-- **Narrative Logic:** Manual audio authoring should live in a stable package namespace just like animation, IO, QA, and editor systems. A dedicated package keeps future audio GUI tasks deterministic for low-reasoning local LLMs.
+- **Narrative Logic:** Manual audio authoring should live in a stable package namespace just like animation, IO, QA, and editor systems. A dedicated package keeps future audio GUI tasks deterministic for automated task execution systems with limited context.
 - **Code Structure Need:** Create `animation_engine/audio/__init__.py` and re-export the project model, WAV IO helpers, synthesis helpers, and playback bridge from one stable import path.
 - **READ_DIRECTORY:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine`
 - **READ_LINES:** `DIRECTORY`
@@ -572,7 +572,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 ### Task 44
 - **Task Name:** Add project save/load and final mixdown export actions
 - **Narrative Logic:** A manual audio GUI must persist work and export finished deliverables. Saving only the UI state is not enough; the tool needs reproducible project files plus final WAV mixdowns and optional stems.
-- **Code Structure Need:** In `audio_editor_gui.py`, add `New/Open/Save/Save As` for a JSON project format (for example `.aeaudio.json`), `Export Mixdown…`, `Export Stems…`, and transport preview hooks that render audio through the synthesis/playback bridge.
+- **Code Structure Need:** In `audio_editor_gui.py`, add `New/Open/Save/Save As` for a JSON project format (for example `.audio_project.json`), `Export Mixdown…`, `Export Stems…`, and transport preview hooks that render audio through the synthesis/playback bridge.
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
 - **READ_LINES:** `360-560`
 - **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/playback.py`
@@ -648,7 +648,7 @@ At completion, export package must include:
 - Complete ordered `.anim` clip set per selected profile.
 - Pack manifest JSON with profile ID, PS2-era visual target, modern gameplay target, reference titles, clip inventory, and metadata.
 - Validation status report (pass/fail with reasons).
-- Saved audio authoring project file (for example `.aeaudio.json`) containing tracks, regions, cue markers, export settings, and animation-event alignment data.
+- Saved audio authoring project file (for example `.audio_project.json`) containing tracks, regions, cue markers, export settings, and animation-event alignment data.
 - Exported audio deliverables: final mixdown `.wav` plus optional per-track stem `.wav` files for manual polish in downstream tools.
 - Cue-marker mapping between audio events and animation/gameplay events so `Mikester9000/GameRewritten` can keep sound timing aligned with clip playback.
 - Updated compatibility documentation for import in `Mikester9000/GameRewritten` repo.
