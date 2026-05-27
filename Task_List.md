@@ -1,6 +1,6 @@
 # Task List — Reference Index Only
 
-This file is now a lightweight index. The authoritative execution plan lives at `/tmp/workspace/Mikester9000/Animation-Engine/taskplanorder.md`.
+This file is now a lightweight index. The authoritative execution plan lives at `./taskplanorder.md`.
 
 ## Phase Index
 - **Phase A:** Tasks 01-03 — Foundations and public contracts
@@ -14,6 +14,6 @@ This file is now a lightweight index. The authoritative execution plan lives at 
 - **Phase I:** Task 22 — Final release readiness and go/no-go
 
 ## Usage Rules
-- Execute tasks in the order they appear in `/tmp/workspace/Mikester9000/Animation-Engine/taskplanorder.md`.
+- Execute tasks in the order they appear in `./taskplanorder.md`.
 - Treat legacy task IDs as stable references only.
 - Do not record completion status here; keep proof and review notes in the authoritative plan.
