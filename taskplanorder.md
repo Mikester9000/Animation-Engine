@@ -619,7 +619,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 
 1. `python -m pytest -q` — all repository tests pass, including the new animation GUI workflow coverage.
 2. `python -m pytest tests/test_editor_gui_workflows.py -q` — timeline state, history, bookmarks, and contact-marker tests all pass.
-3. `python -m animation_engine.editor.main` — editor opens with timeline, viewport, event/contact tools, F-curve panel, and state graph visible, then closes without traceback.
+3. `python -m animation_engine.editor.main` — editor opens with the previously completed timeline/viewport/F-curve/state-graph UI plus the new event/contact tools visible, then closes without traceback.
 4. In the editor, zoom and pan the timeline, marquee-select one or more keyframes, move or duplicate them, and confirm undo/redo restores the exact prior state.
 5. Add, edit, and retime both event markers and contact markers; save the `.anim`; reload it; and confirm names, times, and metadata are preserved.
 6. Select bones from the viewport, use mirror/reset or pose tools, set an in/out preview range with bookmarks, and confirm playback loops only the chosen range.
@@ -628,7 +628,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 
 ## Output Contract for Mikester9000/GameRewritten Handoff (Animation GUI)
 
-At completion, export package must include:
+At completion of Phase J, export package must include:
 - Complete ordered `.anim` clip set per selected profile.
 - Pack manifest JSON with profile ID, PS2-era visual target, modern gameplay target, reference titles, clip inventory, and metadata.
 - Validation status report (pass/fail with reasons).
