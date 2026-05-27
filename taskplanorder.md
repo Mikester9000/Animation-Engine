@@ -593,10 +593,10 @@ Keep late-stage runtime, conversion, and editor enhancements grouped near the en
 - **Risk Class:** Medium
 - **Mandatory Reviewer Role:** Compatibility Reviewer
 - **Do Not Mark Complete Without Proof:**
-  - **Command Run:** `animation-engine batch-export-headers --manifest <pack.json> --output-dir out/`
-  - **Expected Output:** `animation-engine batch-export-headers --manifest pack.json --output-dir out/` creates one `.hpp` file per clip in `ordered_files` and exits with code 0 on success.
+  - **Command Run:** `animation-engine batch-export-headers --manifest ./pack.json --output-dir out/`
+  - **Expected Output:** `animation-engine batch-export-headers --manifest ./pack.json --output-dir out/` creates one `.hpp` file per clip in `ordered_files` and exits with code 0 on success.
   - **Artifact Path:** `./animation_engine/cli.py`
-- **Acceptance Criteria:** `animation-engine batch-export-headers --manifest pack.json --output-dir out/` creates one `.hpp` file per clip in `ordered_files` and exits with code 0 on success.
+- **Acceptance Criteria:** `animation-engine batch-export-headers --manifest ./pack.json --output-dir out/` creates one `.hpp` file per clip in `ordered_files` and exits with code 0 on success.
 
 ### Task 30
 - **Task Name:** Add blend tree state graph panel in editor
@@ -647,7 +647,7 @@ Keep late-stage runtime, conversion, and editor enhancements grouped near the en
 - **READ_FILE:** `./animation_engine/animation/ik_solver.py`
 - **READ_LINES:** `30-95`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** Append new tests at end of file
+- **Lines Being Edited:** `589-628` (append at EOF)
 - **Dependency Inputs:** Task 23, Task 25
 - **Risk Class:** Medium
 - **Mandatory Reviewer Role:** Test Reviewer
@@ -668,7 +668,7 @@ Keep late-stage runtime, conversion, and editor enhancements grouped near the en
 - **READ_FILE:** `./animation_engine/animation/clip.py`
 - **READ_LINES:** `205-230`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** Append new tests at end of file
+- **Lines Being Edited:** `590-629` (append at EOF)
 - **Dependency Inputs:** Task 28, Task 31
 - **Risk Class:** Medium
 - **Mandatory Reviewer Role:** Test Reviewer
