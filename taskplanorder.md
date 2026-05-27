@@ -270,8 +270,8 @@ All planned outputs must satisfy this visual target:
 - **Task Name:** Final acceptance gate for retail-grade export
 - **Narrative Logic:** Conclude with a measurable go/no-go standard for `Mikester9000/GameRewritten` handoff.
 - **Code Structure Need:** Define required pass matrix: tests green, validators green, full pack generated, compat docs updated.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/taskplanorder.md`
-- **READ_LINES:** `FULL_FILE`
+- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/README.md`
+- **READ_LINES:** `42-103,104-136`
 - **File Edited or Created:** Edit this file only if criteria evolve
 - **Lines Being Edited:** `267-286`
 - **Acceptance Criteria:** All required gates pass before release tag.
@@ -452,7 +452,7 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 - **READ_FILE:** `program_assessment.md`
 - **READ_LINES:** `FULL_FILE`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** Sections 3, 5, and 6 throughout the file
+- **Lines Being Edited:** `19-64`
 - **Acceptance Criteria:** All six readiness scores in section 5 are updated; all gap items in section 3 include a "(Resolved — Task N)" note.
 
 ---
