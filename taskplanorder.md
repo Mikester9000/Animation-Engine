@@ -467,188 +467,172 @@ All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as
 
 ---
 
-## Phase J — Full GUI for Manual Audio Creation (Tasks 35–48)
+## Phase J — Full Animation GUI Completion (Tasks 35–48)
 
 ### Task 35
-- **Task Name:** Create audio package public API scaffold
-- **Narrative Logic:** Manual audio authoring should live in a stable package namespace just like animation, IO, QA, and editor systems. A dedicated package keeps future audio GUI tasks deterministic for automated task execution systems with limited context.
-- **Code Structure Need:** Create `animation_engine/audio/__init__.py` and re-export the project model, WAV IO helpers, synthesis helpers, and playback bridge from one stable import path.
-- **READ_DIRECTORY:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine`
-- **READ_LINES:** `DIRECTORY`
-- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/__init__.py`
-- **Lines Being Edited:** `1-80`
-- **Acceptance Criteria:** `from animation_engine.audio import ...` exposes the audio authoring API without requiring callers to import submodules directly.
+- **Task Name:** Expand editor state helpers for timeline view and history
+- **Narrative Logic:** The current editor state helpers cover playback and recent files, but a full animation GUI also needs deterministic state for timeline zoom, visible range, selection IDs, bookmarks, and undo snapshots. Keeping those rules in a pure helper module reduces Tkinter-only logic and stays friendly to weak local LLM workflows.
+- **Code Structure Need:** Extend `animation_engine/editor/state.py` with dataclasses and helpers for timeline view state, playback in/out range, selected keyframe IDs, bookmark storage, and labeled undo/redo snapshot stacks.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/state.py`
+- **READ_LINES:** `1-80`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `1-220`
+- **Acceptance Criteria:** Pure helper tests can create, clamp, and restore editor state without importing Tkinter.
 
 ### Task 36
-- **Task Name:** Add audio project data model for manual authoring
-- **Narrative Logic:** A full manual audio GUI needs a deterministic in-memory project format before any widgets are built. Tracks, regions, envelopes, markers, and export settings must have a JSON-safe schema so work can be saved and resumed.
-- **Code Structure Need:** Create `animation_engine/audio/project.py` with dataclasses (or equivalent simple classes) for `AudioProject`, `AudioTrack`, `AudioRegion`, `EnvelopePoint`, `CueMarker`, and `ExportSettings`, plus `to_dict()` / `from_dict()` helpers.
-- **READ_DIRECTORY:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio`
-- **READ_LINES:** `DIRECTORY`
-- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/project.py`
-- **Lines Being Edited:** `1-260`
-- **Acceptance Criteria:** An empty project and a multi-track project both serialize to dict and restore without losing sample rate, region timing, markers, or envelope points.
+- **Task Name:** Add timeline zoom, pan, and transport range controls
+- **Narrative Logic:** A full animation GUI must let animators focus on a small timing window instead of always viewing a fixed 10-second strip. Dedicated controls for zoom, pan, and transport range are foundational before direct keyframe manipulation becomes usable.
+- **Code Structure Need:** In `animation_engine/editor/main.py`, add toolbar and timeline controls backed by the new state helpers so the timeline can zoom, pan, and display only the active range while keeping playhead, scrubber, and ruler in sync.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_LINES:** `275-330, 1046-1090, 1378-1435`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `275-330, 1046-1194, 1378-1435`
+- **Acceptance Criteria:** User can zoom in/out, pan the visible time window, and see the ruler/playhead update without desynchronizing playback.
 
 ### Task 37
-- **Task Name:** Add WAV import/export helpers
-- **Narrative Logic:** Manual audio creation is not useful unless artists can import recorded source audio and export finished WAV files back out. The repo should stay standard-library friendly, so WAV handling should use deterministic PCM helpers.
-- **Code Structure Need:** Create `animation_engine/audio/wav_io.py` using the Python `wave` module to read/write 16-bit PCM mono/stereo data, normalize sample arrays, and preserve sample rate/channel count metadata.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/project.py`
-- **READ_LINES:** `FULL_FILE`
-- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/wav_io.py`
-- **Lines Being Edited:** `1-220`
-- **Acceptance Criteria:** Importing a WAV into memory and exporting it again preserves frame count, channel count, and sample rate.
+- **Task Name:** Add direct keyframe selection, marquee, and drag editing
+- **Narrative Logic:** The editor is not “full” while keyframes are only passive diamonds. Artists need direct mouse-driven keyframe selection, marquee selection, and drag retiming so the timeline behaves like an actual animation tool instead of a playback monitor.
+- **Code Structure Need:** In `animation_engine/editor/main.py`, add timeline hit-testing, selected-keyframe highlighting, box selection, drag-to-retime, and redraw logic for one or many keyframes across visible rows.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_LINES:** `1046-1194, 1868-1890`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `1094-1194, 1868-1935`
+- **Acceptance Criteria:** Clicking selects a keyframe, dragging moves it in time, and marquee selection can select multiple keys without affecting unrelated rows.
 
 ### Task 38
-- **Task Name:** Add deterministic synthesis primitives for manual sound building
-- **Narrative Logic:** The GUI should support hand-made placeholder and production-support sounds even when no recorded asset exists yet. Deterministic synthesis primitives also make tests easier for weak local LLM workflows.
-- **Code Structure Need:** Create `animation_engine/audio/synthesis.py` with PCM generators for sine, square, triangle, and seeded noise; ADSR envelope shaping; gain/pan helpers; clip mixing; and offline render helpers that produce stable sample arrays from the project model.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/project.py`
-- **READ_LINES:** `FULL_FILE`
-- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/synthesis.py`
-- **Lines Being Edited:** `1-320`
-- **Acceptance Criteria:** Re-rendering the same synthetic region with the same parameters produces byte-identical PCM sample output.
+- **Task Name:** Add duplicate, copy/paste, delete, and nudge for selected keys
+- **Narrative Logic:** After keyframes become selectable, the next productivity gap is repetitive timing cleanup. Full animation GUI workflows need deterministic copy/paste, duplicate, delete, and frame nudge actions so loops, anticipation holds, and impact offsets can be authored quickly.
+- **Code Structure Need:** In `animation_engine/editor/main.py`, add keyboard shortcuts and edit-menu actions for selected timeline keys, including clipboard serialization, duplicate-in-place, delete, and frame-accurate left/right nudging.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_LINES:** `143-181, 1439-1515, 1868-1935`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `163-181, 1439-1515, 1868-1985`
+- **Acceptance Criteria:** A selected keyframe set can be duplicated or pasted at the playhead, deleted, and nudged by frame steps with immediate timeline redraw.
 
 ### Task 39
-- **Task Name:** Add audio preview and playback bridge
-- **Narrative Logic:** Artists need to audition the sound they are building, but the repository should remain lightweight and dependency-free. A playback bridge can render temporary WAV output for preview while gracefully degrading on platforms with limited audio APIs.
-- **Code Structure Need:** Create `animation_engine/audio/playback.py` with helpers for offline preview mixdown, temporary WAV generation, optional Windows `winsound` playback, and a no-crash fallback path for non-Windows platforms.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/wav_io.py`
-- **READ_LINES:** `FULL_FILE`
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/synthesis.py`
-- **READ_LINES:** `FULL_FILE`
-- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/playback.py`
-- **Lines Being Edited:** `1-220`
-- **Acceptance Criteria:** Preview helper writes a temporary WAV for the requested time range and returns cleanly even on platforms where live playback is unavailable.
+- **Task Name:** Upgrade event editing to full timeline and inspector workflows
+- **Narrative Logic:** Event markers already exist, but a full animation GUI needs event authoring to feel equal to transform key authoring. Direct marker selection, drag retiming, rename, and payload editing are required for gameplay synchronization workflows like footsteps, hit windows, and cast release timing.
+- **Code Structure Need:** In `animation_engine/editor/main.py`, expand the event panel into a richer inspector with editable payload text, selection sync with the timeline, marker dragging, and context actions for rename/duplicate/delete.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_LINES:** `580-643, 1170-1194, 1793-1838`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `580-643, 1170-1194, 1793-1867`
+- **Acceptance Criteria:** Event markers can be selected from either the list or timeline, edited in-place, dragged to a new time, and saved without losing payload data.
 
 ### Task 40
-- **Task Name:** Create standalone audio authoring GUI shell
-- **Narrative Logic:** A full manual audio workflow needs its own window rather than overloading the production pack builder. Starting with a dedicated shell keeps the plan deterministic and lets later tasks fill in each panel one file at a time.
-- **Code Structure Need:** Create `animation_engine/gui/audio_editor_gui.py` with a Tkinter window, menu bar, toolbar, transport controls, track list, waveform canvas, inspector panel, log/status bar, and empty project bootstrap using the audio project model.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/production_pack_gui.py`
-- **READ_LINES:** `1-260`
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
-- **READ_LINES:** `143-260`
-- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
-- **Lines Being Edited:** `1-260`
-- **Acceptance Criteria:** Running the module opens a blank audio project window with visible track list, timeline canvas, transport buttons, and status text.
+- **Task Name:** Add contact marker schema to animation clips
+- **Narrative Logic:** Contact markers are the missing data contract between the current editor and a production-ready animation GUI. Foot plants, hand plants, weapon contact, and landing windows should live beside events in the clip itself so they round-trip through save/load and can drive later GUI overlays.
+- **Code Structure Need:** Extend `animation_engine/animation/clip.py` with contact-marker add/remove/query helpers plus `to_dict()` / `from_dict()` support for named markers containing time, channel, side, and optional metadata.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/animation/clip.py`
+- **READ_LINES:** `33-87, 228-254`
+- **File Edited or Created:** Edit existing file
+- **Lines Being Edited:** `33-120, 228-254`
+- **Acceptance Criteria:** Contact markers serialize and deserialize in sorted order without changing existing clip event behavior.
 
 ### Task 41
-- **Task Name:** Add waveform timeline and region block editing
-- **Narrative Logic:** Manual audio creation requires visible regions on a time axis, not just project metadata in forms. Region blocks must be easy to add, move, resize, duplicate, and select on the main timeline.
-- **Code Structure Need:** In `audio_editor_gui.py`, add a zoomable timeline grid, waveform preview lane, track rows, and mouse handlers for region creation, dragging, resizing, duplication, and deletion with project-state redraws after every edit.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
-- **READ_LINES:** `1-260`
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/project.py`
-- **READ_LINES:** `FULL_FILE`
+- **Task Name:** Add contact marker lane, inspector, and viewport overlays
+- **Narrative Logic:** Contact data is not useful unless animators can see and edit it directly. A dedicated lane and viewport overlay make it clear when feet, hands, or props should stick, which is essential for PS2-era readable motion polish.
+- **Code Structure Need:** In `animation_engine/editor/main.py`, add a contact-marker lane below the ruler, a contact inspector beside the event tools, and viewport overlays that highlight active contacts at the current playhead.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_LINES:** `580-648, 1094-1194, 2051-2397`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `120-360`
-- **Acceptance Criteria:** User can create a region on a track, drag it to a new start time, resize its duration, and see both the waveform box and project state update immediately.
+- **Lines Being Edited:** `580-648, 1094-1194, 2087-2397`
+- **Acceptance Criteria:** Adding a contact marker shows it on the timeline and viewport at the correct time, and saving/reopening preserves it.
 
 ### Task 42
-- **Task Name:** Add envelope, gain, pan, and synthesis inspector controls
-- **Narrative Logic:** A GUI is not “full” for manual audio creation unless users can shape the sound directly inside the app. Region selection should expose deterministic controls for amplitude envelopes and generator settings without touching code.
-- **Code Structure Need:** In `audio_editor_gui.py`, add inspector widgets for generator type, oscillator frequency, ADSR values, gain, pan, fade-in/fade-out, loop toggle, and region color/label, and wire them to the selected region.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
-- **READ_LINES:** `120-360`
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/synthesis.py`
-- **READ_LINES:** `FULL_FILE`
+- **Task Name:** Add viewport bone picking and selected-bone highlighting
+- **Narrative Logic:** A full animation GUI should let artists choose bones from the viewport, not only from the tree view. Bone picking, selection highlighting, and clear active-bone feedback make pose blocking much faster during combat and cinematic authoring.
+- **Code Structure Need:** In `animation_engine/editor/main.py`, add projected-bone hit-testing, selected-bone outlines, status text updates, and selection sync between the viewport, bone tree, properties panel, and timeline rows.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_LINES:** `331-341, 437-497, 1856-2397`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `260-460`
-- **Acceptance Criteria:** Changing an inspector value updates the selected region and the next preview render uses the new envelope or synthesis settings.
+- **Lines Being Edited:** `331-341, 437-497, 1856-2397`
+- **Acceptance Criteria:** Clicking a visible joint selects the same bone in all UI panels and highlights it until another bone is selected.
 
 ### Task 43
-- **Task Name:** Add cue-marker lane and animation-event alignment tools
-- **Narrative Logic:** Manual audio should line up with gameplay and animation timing, especially for footsteps, hit sparks, cast releases, and cinematic beats. A marker lane tied to `.anim` events keeps the audio GUI relevant to GameRewritten integration instead of becoming a disconnected mini-tool.
-- **Code Structure Need:** In `audio_editor_gui.py`, add a cue-marker lane, marker list panel, snap-to-frame toggle, and an `Import Anim Events…` action that loads clip events from `.anim` files and converts them into named cue markers at matching times.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
-- **READ_LINES:** `260-460`
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/animation/clip.py`
-- **READ_LINES:** `20-86`
+- **Task Name:** Add pose mirror, reset, and selection-aware pose tools
+- **Narrative Logic:** Full manual animation work involves repeated left/right pose transfer and recovery from bad experimental edits. Mirror-pose and reset helpers speed up blocking of symmetrical combat, locomotion, and idle motions while reducing accidental destructive edits.
+- **Code Structure Need:** In `animation_engine/editor/main.py`, add Tools or Edit actions for mirroring selected-bone transforms, resetting selected channels to bind/default pose, and applying those operations at the current playhead or selected keyframe set.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_LINES:** `143-202, 1439-1776`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `360-560`
-- **Acceptance Criteria:** Importing an `.anim` file with events produces visible markers on the audio timeline, and marker names/times are preserved when saved.
+- **Lines Being Edited:** `163-202, 1439-1776`
+- **Acceptance Criteria:** User can mirror or reset the active pose for selected bones and immediately see the result in both viewport and timeline.
 
 ### Task 44
-- **Task Name:** Add project save/load and final mixdown export actions
-- **Narrative Logic:** A manual audio GUI must persist work and export finished deliverables. Saving only the UI state is not enough; the tool needs reproducible project files plus final WAV mixdowns and optional stems.
-- **Code Structure Need:** In `audio_editor_gui.py`, add `New/Open/Save/Save As` for a JSON project format (for example `.audio_project.json`), `Export Mixdown…`, `Export Stems…`, and transport preview hooks that render audio through the synthesis/playback bridge.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
-- **READ_LINES:** `360-560`
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/playback.py`
-- **READ_LINES:** `FULL_FILE`
+- **Task Name:** Add clip bookmarks plus in/out playback preview range
+- **Narrative Logic:** A full animation GUI must support quick iteration on a subsection of a clip rather than replaying the full clip every time. Bookmarks and in/out preview ranges let animators loop only the anticipation, impact, recovery, or contact window they are currently polishing.
+- **Code Structure Need:** In `animation_engine/editor/main.py`, add bookmark commands, in/out markers on the timeline, playback clamping to preview range, and UI affordances for clearing or jumping between bookmarks.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_LINES:** `275-330, 1094-1194, 1378-1435`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `1-700`
-- **Acceptance Criteria:** Saving and reopening a project restores all tracks/regions/markers, and exporting creates a final mix WAV plus optional per-track stem WAV files.
+- **Lines Being Edited:** `275-330, 1094-1194, 1378-1435`
+- **Acceptance Criteria:** Playback can loop only the chosen in/out range, and bookmarks jump the playhead to saved timing landmarks.
 
 ### Task 45
-- **Task Name:** Add CLI subcommand to launch the audio authoring GUI
-- **Narrative Logic:** The new GUI must be reachable through the same `animation-engine` command surface as the editor and production pack builder. This keeps workflows deterministic and scriptable.
-- **Code Structure Need:** In `animation_engine/cli.py`, add `_cmd_launch_audio_gui(args)` and register a `launch-audio-gui` subcommand beside `launch-production-gui`.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/cli.py`
-- **READ_LINES:** `408-610`
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/gui/audio_editor_gui.py`
-- **READ_LINES:** `FULL_FILE`
+- **Task Name:** Add undo/redo history helpers with labeled snapshot coalescing
+- **Narrative Logic:** Direct manipulation features become risky without deterministic rollback. Undo/redo should be driven by pure state helpers so future editor additions can reuse the same rules without duplicating Tkinter-specific history logic.
+- **Code Structure Need:** Extend `animation_engine/editor/state.py` with undo/redo stack helpers, labeled snapshots, stack limits, and small-change coalescing rules for repeated drags or nudges.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/state.py`
+- **READ_LINES:** `1-220`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** Add launch helper near `388-407`; add parser registration near `588-595`
-- **Acceptance Criteria:** `animation-engine launch-audio-gui` opens the audio authoring window and exits with code 0 when the window closes normally.
+- **Lines Being Edited:** `1-260`
+- **Acceptance Criteria:** Helper calls can push, undo, redo, and coalesce snapshots deterministically while honoring a fixed history limit.
 
 ### Task 46
-- **Task Name:** Add editor menu hook for opening audio authoring GUI
-- **Narrative Logic:** Animators already work inside the main editor, so the audio GUI should be one click away from the existing Tools menu. This makes manual audio creation part of the normal content-authoring workflow.
-- **Code Structure Need:** In `animation_engine/editor/main.py`, add `Open Audio Authoring GUI…` to the Tools menu and implement a `_launch_audio_builder()` helper that spawns `animation_engine.gui.audio_editor_gui` the same way `_launch_pack_builder()` works.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/editor/main.py`
-- **READ_LINES:** `192-202, 1007-1019`
+- **Task Name:** Wire undo/redo, autosave recovery, and session restore into editor
+- **Narrative Logic:** Once history helpers exist, the GUI should use them everywhere that matters. Autosave and crash recovery keep long authoring sessions safe, and session restore makes the editor feel complete enough for daily production use.
+- **Code Structure Need:** In `animation_engine/editor/main.py`, integrate snapshot creation into key editing, event/contact editing, and pose tools; add autosave/recovery prompts; and restore timeline/bookmark/session state on reopen when recovery data exists.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/main.py`
+- **READ_LINES:** `1199-1358, 1439-1985, 2087-2397`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `193-202, 1007-1020`
-- **Acceptance Criteria:** Clicking Tools → Open Audio Authoring GUI… launches the audio window without closing or dirtying the current animation document.
+- **Lines Being Edited:** `1199-1358, 1439-1985, 2087-2397`
+- **Acceptance Criteria:** Undo/redo works across timeline and viewport edits, and an autosaved recovery document can reopen with playhead, selection, and clip state intact.
 
 ### Task 47
-- **Task Name:** Document the manual audio GUI workflow in README
-- **Narrative Logic:** Small local LLMs and human contributors both need a single copy-ready workflow for launching the GUI, creating sounds, aligning markers, and exporting deliverables. Without documentation, the feature will be hard to use correctly.
-- **Code Structure Need:** Update the README with a `Manual Audio GUI` section covering launch commands, project file format, supported authoring actions, `.anim` event import, mixdown/stem export, and a short example workflow.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/README.md`
-- **READ_LINES:** `148-151, 227-257`
+- **Task Name:** Document the full animation GUI workflow in README
+- **Narrative Logic:** Small local LLMs and human contributors both need a single copy-ready workflow for the completed animation GUI. The README should explain timeline editing, event/contact authoring, viewport posing, preview ranges, and recovery behavior so the editor can be used without guesswork.
+- **Code Structure Need:** Update the README with a `Full Animation GUI Workflow` section covering launch commands, major panels, key editing actions, event/contact markers, viewport pose tools, undo/redo, autosave recovery, and a short production-authoring checklist.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/README.md`
+- **READ_LINES:** `148-167, 200-255`
 - **File Edited or Created:** Edit existing file
-- **Lines Being Edited:** `227-310`
-- **Acceptance Criteria:** README includes exact commands for `animation-engine launch-audio-gui` and explains how to save a project, import animation events, preview audio, and export WAV output.
+- **Lines Being Edited:** `148-167, 227-310`
+- **Acceptance Criteria:** README gives exact editor launch commands and a deterministic step-by-step workflow for authoring and reviewing a clip in the finished GUI.
 
 ### Task 48
-- **Task Name:** Add audio project, synthesis, and WAV IO tests
-- **Narrative Logic:** Manual audio creation introduces new state-heavy code that weak local LLMs could easily regress. Focused unit tests lock in the project schema, deterministic synthesis, and WAV import/export behavior.
-- **Code Structure Need:** Create `tests/test_audio.py` with tests for project serialization round-trip, deterministic synth render, WAV import/export round-trip, and cue-marker persistence from saved project files.
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/tests/test_editor_state.py`
-- **READ_LINES:** `1-80`
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/project.py`
+- **Task Name:** Add animation GUI workflow regression tests
+- **Narrative Logic:** Full GUI completion adds dense editing logic that weak local LLMs could easily regress. Focused non-Tkinter regression tests should lock in timeline state, history behavior, bookmark handling, and clip contact-marker round trips.
+- **Code Structure Need:** Create `tests/test_editor_gui_workflows.py` with tests for state-helper clamping, undo/redo stack behavior, bookmark persistence, and `AnimationClip` contact-marker serialization.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/tests/test_editor_state.py`
+- **READ_LINES:** `1-280`
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/editor/state.py`
 - **READ_LINES:** `FULL_FILE`
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/synthesis.py`
-- **READ_LINES:** `FULL_FILE`
-- **READ_FILE:** `/home/runner/work/Animation-Engine/Animation-Engine/animation_engine/audio/wav_io.py`
-- **READ_LINES:** `FULL_FILE`
-- **File Edited or Created:** Create new file `/home/runner/work/Animation-Engine/Animation-Engine/tests/test_audio.py`
-- **Lines Being Edited:** `1-240`
-- **Acceptance Criteria:** `python -m pytest tests/test_audio.py -q` passes and proves audio project saves, synth renders, and WAV round-trips are deterministic.
+- **READ_FILE:** `/tmp/workspace/Mikester9000/Animation-Engine/animation_engine/animation/clip.py`
+- **READ_LINES:** `33-120, 228-254`
+- **File Edited or Created:** Create new file `/tmp/workspace/Mikester9000/Animation-Engine/tests/test_editor_gui_workflows.py`
+- **Lines Being Edited:** `1-260`
+- **Acceptance Criteria:** `python -m pytest tests/test_editor_gui_workflows.py -q` passes and proves the new GUI state contracts are deterministic.
 
 ---
 
 ## Phase J Required Validation Gates (Tasks 35–48)
 
-1. `python -m pytest -q` — all repository tests pass, including the new audio coverage.
-2. `python -m pytest tests/test_audio.py -q` — audio project, synthesis, and WAV IO tests all pass.
-3. `animation-engine launch-audio-gui` — opens a blank audio project window with track list, timeline, inspector, and transport controls and closes without traceback.
-4. In the audio GUI, create at least two tracks (one imported WAV region and one synthesized region), export a mixdown WAV, and confirm the output file exists with the expected sample rate and non-zero duration.
-5. Import an `.anim` file with timeline events into the cue-marker lane, save the audio project, reload it, and confirm cue marker names/times are preserved.
-6. From the main editor Tools menu, launch the audio authoring GUI and confirm the current animation document remains open and unmodified.
+1. `python -m pytest -q` — all repository tests pass, including the new animation GUI workflow coverage.
+2. `python -m pytest tests/test_editor_gui_workflows.py -q` — timeline state, history, bookmarks, and contact-marker tests all pass.
+3. `python -m animation_engine.editor.main` — editor opens with timeline, viewport, event/contact tools, F-curve panel, and state graph visible, then closes without traceback.
+4. In the editor, zoom and pan the timeline, marquee-select one or more keyframes, move or duplicate them, and confirm undo/redo restores the exact prior state.
+5. Add, edit, and retime both event markers and contact markers; save the `.anim`; reload it; and confirm names, times, and metadata are preserved.
+6. Select bones from the viewport, use mirror/reset or pose tools, set an in/out preview range with bookmarks, and confirm playback loops only the chosen range.
 
 ---
 
-## Output Contract for Mikester9000/GameRewritten Handoff (Animation + Audio)
+## Output Contract for Mikester9000/GameRewritten Handoff (Animation GUI)
 
 At completion, export package must include:
 - Complete ordered `.anim` clip set per selected profile.
 - Pack manifest JSON with profile ID, PS2-era visual target, modern gameplay target, reference titles, clip inventory, and metadata.
 - Validation status report (pass/fail with reasons).
-- Saved audio authoring project file (for example `.audio_project.json`) containing tracks, regions, cue markers, export settings, and animation-event alignment data.
-- Exported audio deliverables: final mixdown `.wav` plus optional per-track stem `.wav` files for manual polish in downstream tools.
-- Cue-marker mapping between audio events and animation/gameplay events so `Mikester9000/GameRewritten` can keep sound timing aligned with clip playback.
+- Saved source `.anim` authoring file containing transform keys, events, gameplay tags, contact markers, and editor-authored timing metadata needed for continued polish.
+- Optional review export (for example glTF or validation snapshots) produced from the completed animation GUI workflow for downstream visual review.
+- Contact-marker and event timing mapping that keeps authored gameplay windows aligned with clip playback in `Mikester9000/GameRewritten`.
 - Updated compatibility documentation for import in `Mikester9000/GameRewritten` repo.
