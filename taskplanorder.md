@@ -1020,7 +1020,7 @@ Run the final acceptance gate only after every implementation, documentation, an
 This snapshot is retained for context only. Treat every `PASS` line below as stale until the commands are rerun in the current repository state and their proof artifacts are re-collected.
 
 ## Legacy Release Readiness Snapshot (Task 22)
-All gates below were verified and passed. Tag `Mikester9000/Animation-Engine` as ready for `GameRewritten` handoff.
+At the time this snapshot was captured, all gates below were verified and passed.
 
 | Gate | Status | Details |
 |------|--------|---------|
